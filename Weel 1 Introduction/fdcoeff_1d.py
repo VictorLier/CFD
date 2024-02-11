@@ -85,8 +85,11 @@ def fdcoeff_1d_general(x: List[float], x0: float):
     A = np.linalg.inv(M)
     
     # Scaling
-    A = A / (dx0**np.arange(r))
+    for i in range(r):
+        A[i, :] = A[i, :] / dx0**i
+
     return A
+    
 
 def eval_fdcoeff_1d_general(fun: callable, x: List[float], a: int, b: int):
     """
@@ -101,6 +104,14 @@ def eval_fdcoeff_1d_general(fun: callable, x: List[float], a: int, b: int):
         u_i = u[a_i:b_i+1]
         A = fdcoeff_1d_general(x_i, x[i])
         ux[i] = np.dot(A[1, :], u_i)
+    # n = len(x)
+    # ux = []
+    # for i in range(a, n-b):
+    #     x_i = x[i-a:i+b+1]
+    #     u_i = u[i-a:i+b+1]
+    #     A = fdcoeff_1d_general(x_i, x[i])
+    #     _ux = np.dot(A[1, :], u_i)
+    #     ux.append(_ux)
     return ux
 
 def convergence_test_general():
@@ -130,17 +141,17 @@ def convergence_test_general():
             ux = diff_fun(x)
             ux_approx = eval_fdcoeff_1d_general(fun, x, a, b)
 
-            x_test = np.linspace(-10, 10, 1000)
+            # x_test = np.linspace(-10, 10, 1000)
 
-            plt.figure()
-            #plt.plot(x, ux, label="Exact")
-            plt.plot(x, ux_approx, label="Approx")
-            plt.legend()
+            # plt.figure()
+            # plt.plot(x, ux_approx, label="Approx")
+            # plt.scatter(x, ux, label="Exact")
+            # plt.legend()
 
-            plt.figure()
-            plt.scatter(x, u)
-            plt.plot(x_test, fun(x_test))
-            plt.show()
+            # plt.figure()
+            # plt.scatter(x, u)
+            # plt.plot(x_test, fun(x_test))
+            # plt.show()
 
             error[i, j] = np.abs(ux_approx - ux).max()
 
@@ -153,10 +164,11 @@ def convergence_test_general():
     plt.suptitle(f"Convergence test with a = {a}, b = {b}")
     for i, c in enumerate(C):
         plt.loglog(N, error[i, :], label=f"C = {c}. Slope: {roc[i]:.2f}", marker="o")
-        plt.semilogx(N, TL[i, :])
-        plt.xlabel("N")
-        plt.ylabel("Error")
-        plt.legend()
+        #plt.scatter(np.log(N), TL[i, :])
+    plt.xlabel("N")
+    plt.ylabel("Error")
+    plt.legend()
+    plt.grid()
     plt.show()
         
     stop = True
@@ -169,5 +181,10 @@ if __name__ == "__main__":
         convergence_test_uniform()
 
     if True:
+        x = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3])
+        x0 = 1.5
+        A_uniform = fdcoeff_1d_uniform(3, 3)
+        A_general = fdcoeff_1d_general(x, x0)
+
         convergence_test_general()
 
