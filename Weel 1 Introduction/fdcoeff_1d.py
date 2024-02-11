@@ -2,6 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import List
+from scipy.sparse import lil_matrix
 
 def fdcoeff_1d_uniform(a: int, b: int):
     """
@@ -18,52 +19,30 @@ def fdcoeff_1d_uniform(a: int, b: int):
     A = np.linalg.inv(M)
     return A
 
-def convergence_test_uniform():
+def diffmatrix_1d_uniform(der, N, dx, a: int, b: int):
     """
-    Exercise 221
-    Test the coefficients of one-dimensional finite difference schemes on an even stencil.
+    Computes 1D Finite Difference differentiation matrix for derivative 'der' 
+    on a grid with 'N' points and uniform grid spacing 'dx', using a stencil 
+    'a' points to the left and 'b' points to the right on the interior of 
+    the domain, and increasingly off-centered stencils with r=a+b+1 points
+    near the domain boundaries.
     """
+    r = a + b + 1
+    D = lil_matrix((N, N), dtype=float)
 
-    stencil = [(0, 1), (1, 1), (2, 2)]
+    A = fdcoeff_1d_uniform(a, b)
+    for i in range(N):
+        if i < a-1:
+            x = np.arange(0, r)
+        elif i > N - b - 1:
+            x = np.arange(i - a, i + b + 1)
+            x[-1] = x[-1] - N  # Periodic boundary condition
+        else:
+            x = np.arange(i - a, i + b + 1)
+        D[i, x] = A[der, :] / dx**der
+    return D
 
-    N = np.array([5, 10, 20, 40, 80, 160, 320])
 
-    L = 10
-    k = 2*np.pi/L
-    fun = lambda x: np.sin(k*x)
-    diff_fun = lambda x: k*np.cos(k*x)
-    
-
-    error = np.zeros((len(stencil), len(N)))
-    roc = np.zeros(len(stencil))
-    TL = np.zeros((len(stencil), len(N)))
-
-    for i, (a, b) in enumerate(stencil):
-        A = fdcoeff_1d_uniform(a, b)
-        for j, n in enumerate(N):
-            x = np.linspace(0, L, n)
-            dx = L/(n-1)
-            u = fun(x)
-            ux = diff_fun(x)
-            ux_approx = np.array([np.dot(A[1,:], u[i-a:i+b+1]) for i in range(a, n-b)])/dx
-            error[i, j] = np.abs(ux_approx - ux[a:n-b]).max()
-        
-
-        roc[i] = np.polyfit(np.log(N), np.log(error[i, :]), 1)[0]
-        TL[i, :] = np.polyval(np.polyfit(np.log(N), np.log(error[i, :]), 1), np.log(N))
-    
-    # plot 2 subplots
-    plt.figure()
-    plt.suptitle("Convergence test")
-    for i, (a, b) in enumerate(stencil):
-        plt.loglog(N, error[i, :], label=f"Stencil: a = {a}, b = {b}. Slope: {roc[i]:.2f}", marker="o")
-        plt.semilogx(N, TL[i, :])
-        plt.xlabel("N")
-        plt.ylabel("Error")
-        plt.legend()
-    plt.show()
-        
-    stop = True
 
 
 def fdcoeff_1d_general(x: List[float], x0: float):
@@ -104,87 +83,34 @@ def eval_fdcoeff_1d_general(fun: callable, x: List[float], a: int, b: int):
         u_i = u[a_i:b_i+1]
         A = fdcoeff_1d_general(x_i, x[i])
         ux[i] = np.dot(A[1, :], u_i)
-    # n = len(x)
-    # ux = []
-    # for i in range(a, n-b):
-    #     x_i = x[i-a:i+b+1]
-    #     u_i = u[i-a:i+b+1]
-    #     A = fdcoeff_1d_general(x_i, x[i])
-    #     _ux = np.dot(A[1, :], u_i)
-    #     ux.append(_ux)
     return ux
 
-def convergence_test_general():
-    N = [15, 45, 135, 405]
-    C = [0.0000000001, 0.5, 1.5, 2.5]
-
-    fun = lambda x: 1.0/(1.0 + 25.0*x**2)
-    diff_fun = lambda x: -50.0*x/(1.0 + 25.0*x**2)**2
-
-    a = 2
-    b = 2
-
-    error = np.zeros((len(C), len(N)))
-    roc = np.zeros(len(C))
-    TL = np.zeros((len(C), len(N)))
-
-    for i, c in enumerate(C):
-        for j, n in enumerate(N):
-            nn = int((n-1)/2 + 1)
-            ds = 1/(nn-1)
-            s = np.transpose(np.arange(0, nn))*ds
-            xi = np.tanh(c * s)/np.tanh(c)
-            x = np.zeros(2*nn-1)
-            x[0 : nn] = -1 + xi
-            x[nn-1 ::] = 1 - xi[nn-1::-1]
-            u = fun(x)
-            ux = diff_fun(x)
-            ux_approx = eval_fdcoeff_1d_general(fun, x, a, b)
-
-            # x_test = np.linspace(-10, 10, 1000)
-
-            # plt.figure()
-            # plt.plot(x, ux_approx, label="Approx")
-            # plt.scatter(x, ux, label="Exact")
-            # plt.legend()
-
-            # plt.figure()
-            # plt.scatter(x, u)
-            # plt.plot(x_test, fun(x_test))
-            # plt.show()
-
-            error[i, j] = np.abs(ux_approx - ux).max()
-
-        _roc = np.polyfit(np.log(N), np.log(error[i, :]),1)
-        roc[i] = _roc[0]
-        TL[i, :] = np.polyval(_roc, np.log(N))
+def diffmatrix_1d_general(der,x,a,b):
+    """
+    Computes 1D Finite Difference differentiation matrix for derivative 'der' 
+    on a grid with 'N' points and uniform grid spacing 'dx', using a stencil 
+    'a' points to the left and 'b' points to the right on the interior of 
+    the domain, and increasingly off-centered stencils with r=a+b+1 points
+    near the domain boundaries.
+    """
+    N = len(x)
+    D = lil_matrix((N, N), dtype=float)
     
-    # plot 2 subplots
-    plt.figure()
-    plt.suptitle(f"Convergence test with a = {a}, b = {b}")
-    for i, c in enumerate(C):
-        plt.loglog(N, error[i, :], label=f"C = {c}. Slope: {roc[i]:.2f}", marker="o")
-        #plt.scatter(np.log(N), TL[i, :])
-    plt.xlabel("N")
-    plt.ylabel("Error")
-    plt.legend()
-    plt.grid()
-    plt.show()
-        
-    stop = True
+    for i in range(N):
+        a_i = max(0, i - a)
+        b_i = min(len(x), i + b)
+        x_i = x[a_i:b_i+1] # Stencil
+        A_i = fdcoeff_1d_general(x_i, x[i])
+        D[i, a_i:b_i+1] = A_i[der, :]
+    return D
+
+
 
 
 if __name__ == "__main__":
-    
-
-    if False:
-        convergence_test_uniform()
-
-    if True:
-        x = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3])
-        x0 = 1.5
-        A_uniform = fdcoeff_1d_uniform(3, 3)
-        A_general = fdcoeff_1d_general(x, x0)
-
-        convergence_test_general()
-
+    # raise Exception("This file is not meant to be executed on its own.")
+    D_uniform = diffmatrix_1d_uniform(1, 5, 1, 1, 1)
+    x = np.arange(0, 5)
+    x0 = x[3]
+    D_general = diffmatrix_1d_general(1, x, x0, 1, 1)
+    stop = True
