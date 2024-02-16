@@ -16,7 +16,6 @@ DERy = 1
 #Initialize
 k = 2*math.pi/L
 fun = lambda x,y: np.sin(k*x)*np.sin(k*y)
-print(fun(0.8,0.8))
 dfun = lambda x,y: k*k*np.cos(k*X)*np.cos(k*Y)
 D = L/(N-1)
 error = np.zeros((1, len(N)))
@@ -27,23 +26,23 @@ for i, N in enumerate(N):
     X, Y = np.meshgrid(x,y)
 
     f = fun(X,Y)
+    df = dfun(X,Y)
 
     Dx = diffmatrix_1d_general(DERx,X[0,:],a,b) # Lidt Wired med X[0,:]
     Dy = diffmatrix_1d_general(DERy,Y[:,0],a,b)
-    print(Dx)
-
-    IdentMat = np.eye(N)
+    
+    IdentMat = np.eye(N*N)
 
     DX = np.kron(Dx, IdentMat)
     DY = np.kron(IdentMat, Dy)
+    
+    D_mat = np.dot(DX,DY)
 
-    print(DX)
+    
 
+    f_flat = f.flatten()
 
-    Fx = 1/(2*D)* np.dot(Dx,f)
-
-
-    D_comb = np.hstack((DX,DY)) # ChatGPT bedste bud
+    Fd = 1/(2*D) * np.dot(D_mat,f_flat)
 
     fun_flat = fun.flatten()
     dfun_flat = 1/(2*D) * np.dot(D_comb,fun_flat)
