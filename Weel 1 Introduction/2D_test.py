@@ -28,22 +28,19 @@ for i, N in enumerate(N):
 
     fun = np.sin(k*X)*np.sin(k*Y)
 
-    Dx = diffmatrix_1d_general(DERx,X[0],a,b) # Lidt Wired med X[0]
-    Dy = diffmatrix_1d_general(DERy,Y[0],a,b)
+    Dx = diffmatrix_1d_general(DERx,x,a,b)
+    Dy = diffmatrix_1d_general(DERy,y,a,b)
 
     IdentMat = np.eye(N)
 
-    DX = np.kron(Dx, IdentMat)
-    DY = np.kron(IdentMat, Dy)
+    DX = np.kron(Dx.A, IdentMat)
+    DY = np.kron(IdentMat, Dy.A)
 
-    print(DX)
-
-    D_comb = np.hstack((DX,DY)) # ChatGPT bedste bud
+    D_xy = np.dot(DX,DY)
 
     fun_flat = fun.flatten()
-    dfun_flat = np.dot(D_comb,fun_flat)
+    dfun_flat = np.dot(D_xy, fun_flat)
 
     dfun_flat_2D = dfun_flat.reshape(fun.shape)
-
 
     print(1)

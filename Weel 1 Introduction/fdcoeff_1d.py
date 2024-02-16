@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import List
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix, csr_matrix 
 
 def fdcoeff_1d_uniform(a: int, b: int):
     """
@@ -41,9 +41,6 @@ def diffmatrix_1d_uniform(der, N, dx, a: int, b: int):
             x = np.arange(i - a, i + b + 1)
         D[i, x] = A[der, :] / dx**der
     return D
-
-
-
 
 def fdcoeff_1d_general(x: List[float], x0: float):
     """
@@ -94,7 +91,7 @@ def diffmatrix_1d_general(der,x,a,b):
     near the domain boundaries.
     """
     N = len(x)
-    D = lil_matrix((N, N), dtype=float)
+    D = csr_matrix((N, N), dtype=float)
     
     for i in range(N):
         a_i = max(0, i - a)
