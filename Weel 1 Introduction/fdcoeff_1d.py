@@ -2,8 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from typing import List
-from scipy.sparse import lil_matrix, csr_matrix 
-
+import scipy.sparse as sps
 def fdcoeff_1d_uniform(a: int, b: int):
     """
     Computes coefficients of one-dimensional finite difference schemes on an even stencil.
@@ -91,7 +90,7 @@ def diffmatrix_1d_general(der,x,a,b):
     near the domain boundaries.
     """
     N = len(x)
-    D = csr_matrix((N, N), dtype=float)
+    D = sps.csr_matrix((N, N), dtype=float)
     
     for i in range(N):
         a_i = max(0, i - a)
