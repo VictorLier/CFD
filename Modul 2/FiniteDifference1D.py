@@ -4,49 +4,51 @@ import matplotlib.pyplot as plt
 from typing import List, Tuple
 import scipy.sparse as sps
 
-def CDS(Pe, N, dx, BV: Tuple[float, float]):
-    b = np.zeros(N)
-    b[0] = BV[0]
-    b[-1] = BV[1]
+def CDS_fd(Pe, N, dx, BV: Tuple[float, float]):
+    s = np.zeros(N)
+    s[0] = BV[0]
+    s[-1] = BV[1]
     P = Pe*dx
     aw = -P/2 - 1
     ai = 2
     ae = P/2 - 1
-    D = sps.csr_matrix((N, N), dtype=float)
-    for i in range(N):
-        if i == 0:
-            D[i, i] = 1
-            D[i, i+1] = 0
-        elif i == N-1:
-            D[i, i] = 1
-            D[i, i-1] = 0
-        else:
-            D[i, i] = ai
-            D[i, i-1] = aw
-            D[i, i+1] = ae
-    return sps.linalg.spsolve(D, b)
 
-def UDS(Pe, N, dx, BV: Tuple[float, float]):
-    b = np.zeros(N)
-    b[0] = BV[0]
-    b[-1] = BV[1]
+    Aw = np.full(N-1,aw)
+    Ai = np.full(N,ai)
+    Ae = np.full(N-1,ae)
+
+    Ai[0] = 1
+    Ai[-1] = 1
+    Ae[0] = 0
+    Aw[-1] = 0
+
+    data = np.array([Ai, Aw, Ae])
+    D = sps.diags(data,[0,-1,1])
+
+    return sps.linalg.spsolve(D, s)
+
+def UDS_fd(Pe, N, dx, BV: Tuple[float, float]):
+    s = np.zeros(N)
+    s[0] = BV[0]
+    s[-1] = BV[1]
     P = Pe*dx
     aw = - 1 - P
     ai = 2 + P
     ae = - 1
-    D = sps.csr_matrix((N, N), dtype=float)
-    for i in range(N):
-        if i == 0:
-            D[i, i] = 1
-            D[i, i+1] = 0
-        elif i == N-1:
-            D[i, i] = 1
-            D[i, i-1] = 0
-        else:
-            D[i, i] = ai
-            D[i, i-1] = aw
-            D[i, i+1] = ae
-    return sps.linalg.spsolve(D, b)
+
+    Aw = np.full(N-1,aw)
+    Ai = np.full(N,ai)
+    Ae = np.full(N-1,ae)
+
+    Ai[0] = 1
+    Ai[-1] = 1
+    Ae[0] = 0
+    Aw[-1] = 0
+
+    data = np.array([Ai, Aw, Ae])
+    D = sps.diags(data,[0,-1,1])
+
+    return sps.linalg.spsolve(D, s)
 
 if __name__ == "__main__":
     P = [1, 1.5, 2, 5]
@@ -59,8 +61,8 @@ if __name__ == "__main__":
     error_UDS = np.zeros(len(P))
     for i, _P in enumerate(P):
         Pe = _P/dx
-        T_CDS = CDS(Pe, N, dx, BV)
-        T_UDS = UDS(Pe, N, dx, BV)
+        T_CDS = CDS_fd(Pe, N, dx, BV)
+        T_UDS = UDS_fd(Pe, N, dx, BV)
 
         fun = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
         x = np.linspace(0, L, N)
