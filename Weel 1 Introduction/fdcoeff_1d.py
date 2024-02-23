@@ -27,7 +27,7 @@ def diffmatrix_1d_uniform(der, N, dx, a: int, b: int):
     near the domain boundaries.
     """
     r = a + b + 1
-    D = lil_matrix((N, N), dtype=float)
+    D = sps.csr_matrix((N, N), dtype=float)
 
     A = fdcoeff_1d_uniform(a, b)
     for i in range(N):
@@ -41,11 +41,11 @@ def diffmatrix_1d_uniform(der, N, dx, a: int, b: int):
         D[i, x] = A[der, :] / dx**der
     return D
 
+
 def fdcoeff_1d_general(x: List[float], x0: float):
     """
     Computes coefficients of one-dimensional finite difference schemes on an even stencil.
     """
-
     r = len(x)
     dx0 = np.min(np.diff(x))
     #dx0 = 1
@@ -91,13 +91,24 @@ def diffmatrix_1d_general(der,x,a,b):
     """
     N = len(x)
     D = sps.csr_matrix((N, N), dtype=float)
+    r = a + b + 1
     
     for i in range(N):
-        a_i = max(0, i - a)
-        b_i = min(len(x), i + b)
+        if i < a:
+            a_i = 0
+            b_i = r - 1
+        elif i > N - b - 1:
+            a_i = N - r
+            b_i = N 
+        else:
+            a_i = i - a
+            b_i = i + b
         x_i = x[a_i:b_i+1] # Stencil
+        assert len(x_i) == r
         A_i = fdcoeff_1d_general(x_i, x[i])
         D[i, a_i:b_i+1] = A_i[der, :]
+
+    Dtest = D.toarray().tolist()
     return D
 
 

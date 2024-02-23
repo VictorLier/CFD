@@ -80,7 +80,7 @@ def convergence_test_general():
 
             error[i, j] = np.abs(ux_approx - ux).max()
 
-        _roc = np.polyfit(np.log(N), np.log(error[i, :]),1)
+        _roc = np.polyfit(np.log(N), np.log(error[i, :]), 1)
         roc[i] = _roc[0]
         TL[i, :] = np.polyval(_roc, np.log(N))
     
