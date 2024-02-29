@@ -26,28 +26,26 @@ def convective_face_matrix(n, dx, Pe, UFw, UFe):
 def coef_matrix(n,dx,Pe,fvscheme,Fw,Fe):
     D = -1/dx
     if fvscheme == 'cds':
-        aw = (D-Fw/2)
-        ae = (D+Fe/2)
-        ap = -(ae+aw)+Fe-Fw
+        aW = (D-Fw/2)
+        aE = (D+Fe/2)
+        aP = -(aE+aW)+Fe-Fw
         if dx*Pe >= 2:
             print("Warning - Matrix a no longer diagonally dominant - Non physcial solutions!")
-        return aw, ae ,ap
+        return aW, aE ,aP
     
-    if fvscheme == 'uds':
-        Fw[Fw < 0] = 0
-        aw = D - Fw
-        Fe[Fe < 0] = 0
-        ae = D + Fe
-        ap = -(ae+aw)+Fe-Fw
-        return aw, ae, ap
+    if fvscheme == 'uds':        
+        aE = D + np.minimum(0,Fe)
+        aW = D + np.minimum(0,-Fw)
+        aP = -(aE+aW)+Fe-Fw
+        return aW, aE, aP
     
     raise NotImplementedError("fvscheme not implemented")
 
 
 def impose_boundary(n, dx, problem, aW, aE, aP,BC):
     s = np.zeros(n)
+    
     aW = aW[0:-1]
-    aE = aE[0:-1]
 
     if problem == 1:
         Ta = BC[0,0]
@@ -92,11 +90,11 @@ def solve(A,s):
 
 
 if __name__=="__main__":
-    n = 50
+    n = 10
     L = 1
     dx = L/n
     P = 1
-    Pe = 1
+    Pe = P * n
     problem = 1
     fvscheme = 'uds'
 
@@ -133,7 +131,7 @@ if __name__=="__main__":
     plt.figure()
     plt.suptitle("Test for P = {}".format(P))
     plt.plot(x_plot, T_true_plot, label="T_true")
-    plt.plot(xc, T, label="T_CDS", marker="o")
+    plt.plot(xc, T, label=fvscheme, marker="o")
     plt.xlabel("x")
     plt.ylabel("T")
     plt.legend()
