@@ -114,7 +114,12 @@ def solve(A, s):
 
     solve_time = et - st
 
-    return T, solve_time
+    return T.reshape(n,n,order='F'), solve_time
+
+def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T):
+    TT = np.zeros((n+2,n+2))
+    TT[1:-1,1:-1] = T
+    stop = True
 
 if __name__=="__main__":
     n = 10
@@ -133,7 +138,8 @@ if __name__=="__main__":
     s, aW, aE, aS, aN, aP = impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP)
     D = assemble_matrix(n, aW, aE, aS, aN, aP)
     T, solve_time = solve(D,s)
+    extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T)
 
-    
+
 
     print("Stop")
