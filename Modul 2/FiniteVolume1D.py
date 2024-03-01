@@ -69,6 +69,19 @@ def impose_boundary(n, dx, problem, aW, aE, aP,BC):
         aE[-1] = 0
         return s, aW, aE, aP
 
+    if problem == 3:
+        Ta = BC[2,0]
+        Tb = BC[2,1]
+        aP[0] = aP[0] - 2*aW[0]
+        aE[0] = aE(0) + 1/3*aW(0)
+        s[0] = s[0] - 8/3*Ta*aW[0]
+        aW[0] = 0
+        aP[-1] = aP[-1] - 2*aE[-1]
+        aW[-1] = aW[-1] + 1/3*aE[-1]
+        s[-1] = s[-1] - 8/3*aE[-1]*Tb
+        aE[-1] = 0
+        return s, aW, aE, aP
+
     raise NotImplementedError("Problem not implemented")
 
 def assemble_matrix(n,aW,aE,aP):
@@ -98,13 +111,13 @@ if __name__=="__main__":
     problem = 1
     fvscheme = 'uds'
 
-    BC = np.array([[0,1],[0,1]])
+    BC = np.array([[0,1],[0,1],[0,1]])
 
     if problem == 1:
         Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
 
     elif problem == 2:
-        Texact = lambda x: 1/Pe*math.exp(-Pe)*(math.exp(Pe*x)-1)
+        Texact = lambda x: 1/Pe*np.exp(-Pe)*(np.exp(Pe*x)-1)
 
 
     
