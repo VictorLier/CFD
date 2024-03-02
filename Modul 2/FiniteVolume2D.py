@@ -27,15 +27,15 @@ def convectiveVelocityField(problem, n, xf):
         return UFw, UFe, VFs,VFn
     
 def convective_face_matrix(n, dx, Pe, UFw, UFe, VFs, VFn):
-    Fe = Pe * UFe
-    Fw = Pe * UFw
-    Fs = Pe * VFs
-    Fn = Pe * VFn
+    Fe = Pe * UFe * dx
+    Fw = Pe * UFw * dx
+    Fs = Pe * VFs * dx
+    Fn = Pe * VFn * dx
 
     return Fw, Fe, Fs, Fn
 
 def coef_matrix(n,dx,Pe,fvscheme,Fw,Fe,Fs,Fn):
-    D = -1/dx
+    D = -dx/dx # Nb should be made individual for w,e,s,n if dx,dy are different
     if fvscheme == 'cds':
         aW = (D-Fw/2)
         aE = (D+Fe/2)
@@ -63,43 +63,58 @@ def impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP):
     s = np.zeros((n, n))
     
     if problem == 1:
-        DTgn = 0
+        DTgn = 1
         DTgs = 0
         Tgw = 0
         Tge = 1
         # Nuemann boundary conditions
-        aP[0,:] = aP[0,:] + aN[0,:]
-        aP[-1,:] = aP[-1,:] + aS[-1,:]
-        s[0,:] = s[0,:] - aN[0,:]*dx*DTgn
-        s[-1,:] = s[-1,:] + aS[-1,:]*dx*DTgs
-        aS[0,:] = 0
+        ## North
+        aP[-1,:] = aP[-1,:] + aN[-1,:]
+        s[-1,:] = s[-1,:] - aN[-1,:]*dx*DTgn
         aN[-1,:] = 0
+
+        ## South
+        aP[0,:] = aP[0,:] + aS[0,:]
+        s[0,:] = s[0,:] + aS[0,:]*dx*DTgs
+        aS[0,:] = 0
+        
         
         # Dirichlet boundary conditions
+        ## West
         aP[:,0] = aP[:,0] - aW[:,0]
-        aP[:,-1] = aP[:,-1] - aE[:,-1]
         s[:,0] = s[:,0] - 2*Tgw*aW[:,0]
-        s[:,-1] = s[:,-1] - 2*Tge*aE[:,-1]
         aW[:,0] = 0
+        ## East
+        aP[:,-1] = aP[:,-1] - aE[:,-1]
+        s[:,-1] = s[:,-1] - 2*Tge*aE[:,-1]
         aE[:,-1] = 0
         return s, aW, aE, aS, aN, aP
     
     if problem == 2:
         DTgn = 0
-        DTgs = xc
+        Tgs = xc
         Tgw = 0
-        Tge = 2
+        Tge = 1
         # Nuemann boundary conditions
-        aP[0,:] = aP[0,:] + aN[0,:]
-        aP[-1,:] = aP[-1,:] + aS[-1,:]
-        s[0,:] = s[0,:] - aN[0,:]*dx*DTgn
-        s[-1,:] = s[-1,:] + aS[-1,:]*dx*DTgs
+        ## North
+        aP[-1,:] = aP[-1,:] + aN[-1,:]
+        s[-1,:] = s[-1,:] - aN[-1,:]*dx*DTgn
+        aN[-1,:] = 0
         
         # Dirichlet boundary conditions
+        ## West
         aP[:,0] = aP[:,0] - aW[:,0]
-        aP[:,-1] = aP[:,-1] - aE[:,-1]
         s[:,0] = s[:,0] - 2*Tgw*aW[:,0]
+        aW[:,0] = 0
+        ## East
+        aP[:,-1] = aP[:,-1] - aE[:,-1]
         s[:,-1] = s[:,-1] - 2*Tge*aE[:,-1]
+        aE[:,-1] = 0
+        ## South
+        aP[0,:] = aP[0,:] - aS[0,:]
+        s[0,:] = s[0,:] - 2*Tgs*aS[:,-1]
+        aS[0,:] = 0
+        
         return s, aW, aE, aS, aN, aP
     
     raise NotImplementedError("problem not implemented")
@@ -123,19 +138,38 @@ def solve(A, s):
 
 def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T):
     TT = np.zeros((n+2,n+2))
-    TT[1:-1,1:-1] = T
+    return TT
+
     stop = True
 
-def surface_plot(xc, T):
-    fig = plt.figure()
+def plot_temperature_field(xc, T):
+    plt.figure()
     # Make a grid plot with temperature as the color usin pcolormesh
-    plt.pcolormesh(xc, xc, np.flipud(T))
+    plt.pcolormesh(xc, xc, T)
     # Add label to colorbar
     plt.colorbar(label='Temperature')
     plt.xlabel('x-axis')
     plt.ylabel('y-axis')
     plt.legend()
     plt.title('Temperature distribution')
+
+    plt.figure()
+    plt.contourf(xc, xc, T)
+    plt.colorbar(label='Temperature')
+    plt.xlabel('x-axis')
+    plt.ylabel('y-axis')
+    plt.legend()
+    plt.title('Temperature distribution')
+
+    # Plot the surface 
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    X, Y = np.meshgrid(xc, xc)
+    ax.plot_surface(X, Y, T, cmap='viridis')
+    ax.set_xlabel('x-axis')
+    ax.set_ylabel('y-axis')
+    ax.set_zlabel('Temperature')
+    ax.set_title('Temperature distribution')
 
 
     # fig, ax = plt.subplots(dpi = 200)
@@ -147,14 +181,7 @@ def surface_plot(xc, T):
     # plt.yticks(ticks = xc, labels = 'y-axis')
     # ax.grid(True, which='minor')
 
-if __name__=="__main__":
-    n = 10
-    L = 1
-    P = 1
-    Pe = P * n
-    problem = 2
-    fvscheme = 'uds'
-
+def do_simulation(n, L, Pe, problem, fvscheme, plot = True):
     dx = L/n
     xf = np.arange(0,L+dx,dx)
     xc = np.arange(dx/2,L-dx/2+dx,dx)
@@ -165,9 +192,21 @@ if __name__=="__main__":
     s, aW, aE, aS, aN, aP = impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP)
     D = assemble_matrix(n, aW, aE, aS, aN, aP)
     T, solve_time = solve(D,s)
-    extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T)
-    surface_plot(xc, T)
+    TT = extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T)
+    if plot:
+        plot_temperature_field(xc, T)
+    return T, solve_time
+
+if __name__=="__main__":
+    n = 10
+    L = 1
+    # P = 1.5
+    # Pe = P * n
+    Pe = 10
+    problem = 2
+    fvscheme = 'uds'
+
+    T, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
 
 
     plt.show()
-    print("Stop")
