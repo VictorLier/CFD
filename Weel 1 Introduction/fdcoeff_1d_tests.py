@@ -101,10 +101,10 @@ def convergence_test_general():
 if __name__ == "__main__":
     
 
-    if False:
+    if True:
         convergence_test_uniform()
 
-    if True:
+    if False:
         convergence_test_general()
 
     plt.show()
