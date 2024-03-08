@@ -63,7 +63,7 @@ def impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP):
     s = np.zeros((n, n))
     
     if problem == 1:
-        DTgn = 1
+        DTgn = 0
         DTgs = 0
         Tgw = 0
         Tge = 1
@@ -198,13 +198,13 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = True):
     return T, solve_time
 
 if __name__=="__main__":
-    n = 10
+    n = 250
     L = 1
     # P = 1.5
     # Pe = P * n
     Pe = 10
-    problem = 2
-    fvscheme = 'uds'
+    problem = 1
+    fvscheme = 'cds'
 
     T, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
 

@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 from typing import List
 import scipy.sparse as sps
+
 def fdcoeff_1d_uniform(a: int, b: int):
     """
     Computes coefficients of one-dimensional finite difference schemes on an even stencil.
