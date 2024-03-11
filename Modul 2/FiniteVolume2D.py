@@ -146,8 +146,8 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
             TT[1:-1,1:-1] = T
             TT[:,0] = 0
             TT[:,-1] = 1
-            TT[0,:] = TT[1,:]
-            TT[-1,:] = TT[-2,:]
+            TT[0,:] = TT[1,:] - 1/2 * dx * 0 # NB 0 is bundary condition (D_a)
+            TT[-1,:] = TT[-2,:] + 1/2 * dx * 0 # NB 0 is bundary condition (D_b)
             return TT
     
         if fvscheme == 'uds':
@@ -155,7 +155,7 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
             TT[1:-1,1:-1] = T
             TT[:,0] = 2*0 - TT[:,1]
             TT[:,-1] = TT[:,-2]
-            TT[0,:] = TT[1,:]
+            TT[0,:] = TT[1,:] - dx * 0 # NB 0 is bundary condition (D_a)
             TT[-1,:] = TT[-2,:]
             return TT
         
@@ -181,7 +181,7 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
             TT = np.zeros((n+2,n+2))
             TT[1:-1,1:-1] = T
             TT[:,0] = TT[:,1]
-            TT[:,-1] = 2*1 - TT[:,-2]
+            TT[:,-1] = 2*1 - TT[:,-2] #NB 1 is bundary condition
             TT[0,:] = 2*_xc - TT[1,:]
             TT[-1,:] = TT[-2,:]
             return TT
@@ -230,7 +230,45 @@ def plot_temperature_field(xc, TT, dx, L):
     # plt.yticks(ticks = xc, labels = 'y-axis')
     # ax.grid(True, which='minor')
 
-def do_simulation(n, L, Pe, problem, fvscheme, plot = True):
+def GlobalConservation(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
+    """
+    return Conservation error
+    """
+    if fvscheme == 'cds': 
+        DTw = ((TT[:,1] - TT[:,0]) / dx * 2)[1:-1]
+        DTe = ((TT[:,-1] - TT[:,-2]) / dx * 2)[1:-1]
+        DTs = ((TT[1,:] - TT[0,:]) / dx * 2)[1:-1]
+        DTn = ((TT[-2,:] - TT[-1,:]) / dx * 2)[1:-1]
+
+    if fvscheme == 'uds':
+        if problem == 1:
+            Tb = 1
+            Ta = 0
+            DTw = 2/dx * (TT[:,0] - Ta)[1:-1]
+            DTe = 2/dx * (Tb - TT[:,-1])[1:-1]
+            DTs = 0 # NB 0 is bundary condition (D_a)
+            DTn = 0 # NB 0 is bundary condition (D_b)
+        
+        if problem == 2:
+            Tgs = xc
+            Tgw = 0
+            Tge = 1
+            DTw = 2/dx * (TT[1:-1,0] - Tgw)
+            DTe = 2/dx * (Tge - TT[1:-1,-1])
+            DTs = 2/dx * (Tgs - TT[0,1:-1])
+            DTn = 0 # NB 0 is bundary condition (D_b)'
+
+    PeuTw = Pe * UFw[:,0] * TT[1:-1,0]
+    PeuTe = Pe * UFe[:,-1] * TT[1:-1,-1]
+    PeuTs = Pe * VFs[0,:] * TT[0,1:-1]
+    PeuTn = Pe * VFn[-1,:] * TT[-1,1:-1]
+    xflux = np.sum((PeuTe-DTe) - (PeuTw-DTw)) * dx
+    yflux = np.sum((PeuTn-DTn) - (PeuTs-DTs)) * dx
+    Flux = xflux + yflux
+    return Flux
+
+
+def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     dx = L/n
     xf = np.arange(0,L+dx,dx)
     xc = np.arange(dx/2,L-dx/2+dx,dx)
@@ -242,6 +280,8 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = True):
     D = assemble_matrix(n, aW, aE, aS, aN, aP)
     T, solve_time = solve(D,s)
     TT = extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc)
+    Flux = GlobalConservation(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme)
+    
     if plot:
         plot_temperature_field(xc, TT, dx, L)
     return T, TT, solve_time
@@ -253,7 +293,7 @@ if __name__=="__main__":
     # Pe = P * n
     Pe = 10
     problem = 2
-    fvscheme = 'uds'
+    fvscheme = 'cds'
 
     T, TT, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
 
