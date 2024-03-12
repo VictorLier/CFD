@@ -140,10 +140,10 @@ def solve(A, s):
     return T.reshape(n,n,order='F'), solve_time
 
 def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
+    TT = np.zeros((n+2,n+2))
+    TT[1:-1,1:-1] = T
     if problem == 1:
         if fvscheme == 'cds':    
-            TT = np.zeros((n+2,n+2))
-            TT[1:-1,1:-1] = T
             TT[:,0] = 0
             TT[:,-1] = 1
             TT[0,:] = TT[1,:] - 1/2 * dx * 0 # NB 0 is bundary condition (D_a)
@@ -151,8 +151,6 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
             return TT
     
         if fvscheme == 'uds':
-            TT = np.zeros((n+2,n+2))
-            TT[1:-1,1:-1] = T
             TT[:,0] = 2*0 - TT[:,1]
             TT[:,-1] = TT[:,-2]
             TT[0,:] = TT[1,:] - dx * 0 # NB 0 is bundary condition (D_a)
@@ -165,8 +163,6 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
             _xc[1:-1] = xc
             _xc[0] = xc[0] - dx/2
             _xc[-1] = xc[-1] + dx/2
-            TT = np.zeros((n+2,n+2))
-            TT[1:-1,1:-1] = T
             TT[:,0] = 0
             TT[:,-1] = 1
             TT[0,:] = _xc
@@ -178,14 +174,47 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
             _xc[1:-1] = xc
             _xc[0] = xc[0] - dx/2
             _xc[-1] = xc[-1] + dx/2
-            TT = np.zeros((n+2,n+2))
-            TT[1:-1,1:-1] = T
             TT[:,0] = TT[:,1]
             TT[:,-1] = 2*1 - TT[:,-2] #NB 1 is bundary condition
             TT[0,:] = 2*_xc - TT[1,:]
             TT[-1,:] = TT[-2,:]
             return TT
-    stop = True
+
+def extrapolate_gradients_to_walls(n, dx, fvscheme, problem, TT, xc):
+    dT = np.zeros((n + 2,n + 2))
+    if problem == 1:
+        if fvscheme == 'cds':    
+            dT[:,0] = 2 / dx * (TT[:,1] - 0)
+            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
+            dT[0,:] =  0 # NB 0 is bundary condition (D_a)
+            dT[-1,:] =  0 # NB 0 is bundary condition (D_b)
+            return dT
+    
+        if fvscheme == 'uds':
+            dT[:,0] = 2 / dx * (TT[:,1] - 0)
+            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
+            dT[0,:] =  0 # NB 0 is bundary condition (D_a)
+            dT[-1,:] =  0 # NB 0 is bundary condition (D_b)
+            return dT
+        
+    if problem == 2:
+        _xc = np.zeros(len(xc)+2)
+        _xc[1:-1] = xc
+        _xc[0] = xc[0] - dx/2
+        _xc[-1] = xc[-1] + dx/2
+        if fvscheme == 'cds':
+            dT[:,0] = 2 / dx * (TT[:,1] - 0)
+            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
+            dT[0,:] = 2 / dx * (TT[1,:] - _xc)
+            dT[-1,:] = 0
+            return dT
+
+        if fvscheme == 'uds':
+            dT[:,0] = 2 / dx * (TT[:,1] - 0)
+            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
+            dT[0,:] = 2 / dx * (TT[1,:] - _xc)
+            dT[-1,:] = 0
+            return dT
 
 def plot_temperature_field(xc, TT, dx, L):
     _xc = np.zeros(len(xc)+2)
@@ -230,7 +259,7 @@ def plot_temperature_field(xc, TT, dx, L):
     # plt.yticks(ticks = xc, labels = 'y-axis')
     # ax.grid(True, which='minor')
 
-def GlobalConservation(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
+def GlobalConservation_old(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
     """
     return Conservation error
     """
@@ -267,6 +296,19 @@ def GlobalConservation(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
     Flux = xflux + yflux
     return Flux
 
+def GlobalConservation(TT, dT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
+    """
+    return Conservation error
+    """
+    PeuTw = Pe * UFw[:,0] * TT[1:-1,0]
+    PeuTe = Pe * UFe[:,-1] * TT[1:-1,-1]
+    PeuTs = Pe * VFs[0,:] * TT[0,1:-1]
+    PeuTn = Pe * VFn[-1,:] * TT[-1,1:-1]
+    xflux = np.sum((PeuTe-dT[1:-1,-1]) - (PeuTw-dT[1:-1,0])) * dx
+    yflux = np.sum((PeuTn-dT[-1,1:-1]) - (PeuTs-dT[0,1:-1])) * dx
+    Flux = xflux + yflux
+    return Flux
+
 
 def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     dx = L/n
@@ -280,7 +322,8 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     D = assemble_matrix(n, aW, aE, aS, aN, aP)
     T, solve_time = solve(D,s)
     TT = extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc)
-    Flux = GlobalConservation(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme)
+    dT = extrapolate_gradients_to_walls(n, dx, fvscheme, problem, TT, xc)
+    Flux = GlobalConservation(TT, dT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme)
     
     if plot:
         plot_temperature_field(xc, TT, dx, L)
@@ -291,7 +334,7 @@ if __name__=="__main__":
     L = 1
     # P = 1.5
     # Pe = P * n
-    Pe = 10
+    Pe = 7
     problem = 2
     fvscheme = 'cds'
 
