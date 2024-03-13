@@ -130,7 +130,7 @@ def assemble_matrix(n, aW, aE, aS, aN, aP):
     D = sps.spdiags(data, [0, -n, -1, 1, n], n*n, n*n, format = 'csr').T
     return D
 
-def solve(A, s):
+def solve(A, s, n):
     st = time.perf_counter()
     T = sps.linalg.spsolve(A, s.flatten('F'))
     et = time.perf_counter()
@@ -320,7 +320,7 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     aW, aE, aS, aN, aP = coef_matrix(n,dx,Pe,fvscheme,Fw,Fe,Fs,Fn)
     s, aW, aE, aS, aN, aP = impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP)
     D = assemble_matrix(n, aW, aE, aS, aN, aP)
-    T, solve_time = solve(D,s)
+    T, solve_time = solve(D, s, n)
     TT = extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc)
     dT = extrapolate_gradients_to_walls(n, dx, fvscheme, problem, TT, xc)
     Flux = GlobalConservation(TT, dT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme)
@@ -329,16 +329,55 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
         plot_temperature_field(xc, TT, dx, L)
     return T, TT, solve_time
 
+
+def convergence_rate(L, Pe = 10):
+    problem = 1
+    scheme = ['cds', 'uds']
+
+    Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
+
+    n = np.array([10, 20, 40, 80, 160, 320])
+    x_smooth = np.linspace(0, L, 1000)
+
+    ERROR = np.zeros((len(n), len(scheme)))
+
+    plt.figure()
+    plt.plot(x_smooth, Texact(x_smooth), label = 'Texact')
+    for scheme in enumerate(scheme):
+        fvscheme = scheme[1]
+        for i in range(6):
+            x = np.linspace(0, L, n[i]+2)
+            T_exact = Texact(x)
+            T, TT, solve_time = do_simulation(n[i], L, Pe, problem, fvscheme, plot = False)
+            ERROR[i,scheme[0]] = np.max(abs(TT-T_exact))
+            plt.plot(x, TT[0,:],  label = 'T and n = ' + str(n[i]) + ' and fvscheme = ' + fvscheme)
+    
+    plt.legend()
+    plt.show()
+    print(ERROR)
+    plt.figure()
+    plt.loglog(n, ERROR[:,0], label = 'cds')
+    plt.loglog(n, ERROR[:,1], label = 'uds')
+    plt.grid()
+    plt.legend()
+    plt.show()
+    return TT
+
+
+
+
 if __name__=="__main__":
-    n = 50
+    #n = 10
     L = 1
     # P = 1.5
     # Pe = P * n
-    Pe = 7
-    problem = 2
-    fvscheme = 'cds'
+    #Pe = 10
+    #problem = 1
+    #fvscheme = 'cds'
 
-    T, TT, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
+    #T, TT, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = False)
+
+    TT = convergence_rate(L, Pe = 10)
 
 
     plt.show()
