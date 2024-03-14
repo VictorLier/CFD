@@ -36,6 +36,9 @@ for i, n in enumerate(N):
 
 data = np.vstack((N,ERROR))
 
+slope = np.polyfit(np.log(N),np.log(ERROR),1)[0]
+print(slope)
+
 print(N)
 
 print(ERROR)
