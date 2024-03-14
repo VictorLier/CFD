@@ -24,7 +24,7 @@ def fdcoeff_2d_general(DERx, DERy, x, y, a, b):
 
 
 #Input
-N = np.array([20, 40, 80, 160, 320])
+N = np.array([20, 40, 80, 160, 320, 640, 1280])
 L = 1
 a = 1
 b = 1

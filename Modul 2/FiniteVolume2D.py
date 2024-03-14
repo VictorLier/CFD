@@ -259,7 +259,7 @@ def GlobalConservation(TT, dT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme
 
 def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     dx = L/n
-    xf = np.arange(0,L+dx,dx)
+    xf = np.arange(n + 1) * dx
     xc = np.arange(dx/2,L-dx/2+dx,dx)
 
     UFw, UFe, VFs,VFn = convectiveVelocityField(problem, n, xf)
@@ -320,17 +320,17 @@ def convergence_rate(L, Pe = 10):
 
 
 if __name__=="__main__":
-    #n = 50
+    n = 46
     L = 1
     # P = 1.5
     # Pe = P * n
-    #Pe = 10
-    #problem = 1
-    #fvscheme = 'cds'
+    Pe = 10
+    problem = 2
+    fvscheme = 'cds'
 
-    #T, TT, dT, Flux, solve_time, xc = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
+    T, TT, dT, Flux, solve_time, xc = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
 
-    TT = convergence_rate(L, Pe = 10)
+    # TT = convergence_rate(L, Pe = 10)
 
 
     plt.show()
