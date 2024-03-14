@@ -124,7 +124,17 @@ def assemble_matrix(n, aW, aE, aS, aN, aP):
     return D
     """
     data = np.array([aP.flatten('F'), aE.flatten('F'), aN.flatten('F'), aS.flatten('F'), aW.flatten('F')])
-    D = sps.spdiags(data, [0, -n, -1, 1, n], n*n, n*n, format = 'csr').T
+    
+    
+    st = time.perf_counter()
+    Dt = sps.spdiags(data, [0, -n, -1, 1, n], n*n, n*n, format = 'csc')
+    et = time.perf_counter()
+    Time = et - st
+    st = time.perf_counter()
+    D = Dt.T
+    et = time.perf_counter()
+    Time2 = et - st
+    print(Time, Time2)
     return D
 
 def solve(A, s, n):
@@ -320,7 +330,7 @@ def convergence_rate(L, Pe = 10):
 
 
 if __name__=="__main__":
-    n = 46
+    n = 1000
     L = 1
     # P = 1.5
     # Pe = P * n
@@ -328,7 +338,12 @@ if __name__=="__main__":
     problem = 2
     fvscheme = 'cds'
 
-    T, TT, dT, Flux, solve_time, xc = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
+    st = time.perf_counter()
+    T, TT, dT, Flux, solve_time, xc = do_simulation(n, L, Pe, problem, fvscheme, plot = False)
+    et = time.perf_counter()
+    Time3 = et - st
+    print(Time3)
+    print(solve_time)
 
     # TT = convergence_rate(L, Pe = 10)
 
