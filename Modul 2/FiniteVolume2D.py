@@ -137,7 +137,7 @@ def solve(A, s, n):
 
     solve_time = et - st
 
-    return T.reshape(n,n,order='F'), solve_time
+    return T.reshape(n, n, order='F'), solve_time
 
 def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
     TT = np.zeros((n+2,n+2))
@@ -183,38 +183,25 @@ def extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc):
 def extrapolate_gradients_to_walls(n, dx, fvscheme, problem, TT, xc):
     dT = np.zeros((n + 2,n + 2))
     if problem == 1:
-        if fvscheme == 'cds':    
-            dT[:,0] = 2 / dx * (TT[:,1] - 0)
-            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
-            dT[0,:] =  0 # NB 0 is bundary condition (D_a)
-            dT[-1,:] =  0 # NB 0 is bundary condition (D_b)
-            return dT
-    
-        if fvscheme == 'uds':
-            dT[:,0] = 2 / dx * (TT[:,1] - 0)
-            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
-            dT[0,:] =  0 # NB 0 is bundary condition (D_a)
-            dT[-1,:] =  0 # NB 0 is bundary condition (D_b)
-            return dT
-        
+
+        dT[:,0] = 2 / dx * (TT[:,1] - 0)
+        dT[:,-1] = 2 / dx * (1 - TT[:,-2])
+        dT[0,:] =  0 # NB 0 is bundary condition (D_a)
+        dT[-1,:] =  0 # NB 0 is bundary condition (D_b)
+        return dT
+
     if problem == 2:
         _xc = np.zeros(len(xc)+2)
         _xc[1:-1] = xc
         _xc[0] = xc[0] - dx/2
         _xc[-1] = xc[-1] + dx/2
-        if fvscheme == 'cds':
-            dT[:,0] = 2 / dx * (TT[:,1] - 0)
-            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
-            dT[0,:] = 2 / dx * (TT[1,:] - _xc)
-            dT[-1,:] = 0
-            return dT
 
-        if fvscheme == 'uds':
-            dT[:,0] = 2 / dx * (TT[:,1] - 0)
-            dT[:,-1] = 2 / dx * (1 - TT[:,-2])
-            dT[0,:] = 2 / dx * (TT[1,:] - _xc)
-            dT[-1,:] = 0
-            return dT
+        dT[:,0] = 2 / dx * (TT[:,1] - 0)
+        dT[:,-1] = 2 / dx * (1 - TT[:,-2])
+        dT[0,:] = 2 / dx * (TT[1,:] - _xc)
+        dT[-1,:] = 0
+        return dT
+
 
 def plot_temperature_field(xc, TT, dx, L):
     _xc = np.zeros(len(xc)+2)
@@ -259,43 +246,6 @@ def plot_temperature_field(xc, TT, dx, L):
     # plt.yticks(ticks = xc, labels = 'y-axis')
     # ax.grid(True, which='minor')
 
-def GlobalConservation_old(TT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
-    """
-    return Conservation error
-    """
-    if fvscheme == 'cds': 
-        DTw = ((TT[:,1] - TT[:,0]) / dx * 2)[1:-1]
-        DTe = ((TT[:,-1] - TT[:,-2]) / dx * 2)[1:-1]
-        DTs = ((TT[1,:] - TT[0,:]) / dx * 2)[1:-1]
-        DTn = ((TT[-2,:] - TT[-1,:]) / dx * 2)[1:-1]
-
-    if fvscheme == 'uds':
-        if problem == 1:
-            Tb = 1
-            Ta = 0
-            DTw = 2/dx * (TT[:,0] - Ta)[1:-1]
-            DTe = 2/dx * (Tb - TT[:,-1])[1:-1]
-            DTs = 0 # NB 0 is bundary condition (D_a)
-            DTn = 0 # NB 0 is bundary condition (D_b)
-        
-        if problem == 2:
-            Tgs = xc
-            Tgw = 0
-            Tge = 1
-            DTw = 2/dx * (TT[1:-1,0] - Tgw)
-            DTe = 2/dx * (Tge - TT[1:-1,-1])
-            DTs = 2/dx * (Tgs - TT[0,1:-1])
-            DTn = 0 # NB 0 is bundary condition (D_b)'
-
-    PeuTw = Pe * UFw[:,0] * TT[1:-1,0]
-    PeuTe = Pe * UFe[:,-1] * TT[1:-1,-1]
-    PeuTs = Pe * VFs[0,:] * TT[0,1:-1]
-    PeuTn = Pe * VFn[-1,:] * TT[-1,1:-1]
-    xflux = np.sum((PeuTe-DTe) - (PeuTw-DTw)) * dx
-    yflux = np.sum((PeuTn-DTn) - (PeuTs-DTs)) * dx
-    Flux = xflux + yflux
-    return Flux
-
 def GlobalConservation(TT, dT, dx, Pe, xc, UFw, UFe, VFs, VFn, problem, fvscheme):
     """
     return Conservation error
@@ -327,7 +277,9 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     
     if plot:
         plot_temperature_field(xc, TT, dx, L)
-    return T, TT, solve_time
+    return T, TT, dT, Flux, solve_time
+
+
 
 
 def convergence_rate(L, Pe = 10):
@@ -373,7 +325,7 @@ if __name__=="__main__":
     problem = 2
     fvscheme = 'cds'
 
-    T, TT, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
+    #T, TT, dT, Flux solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = False)
 
     #TT = convergence_rate(L, Pe = 10)
 
