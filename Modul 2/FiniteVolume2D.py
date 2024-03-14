@@ -333,25 +333,23 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
 def convergence_rate(L, Pe = 10):
     problem = 1
     scheme = ['cds', 'uds']
-
     Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
 
-    n = np.array([10, 20, 40, 80, 160, 320])
-    x_smooth = np.linspace(0, L, 1000)
-
+    n = np.array([10, 20, 40, 80, 160])
     ERROR = np.zeros((len(n), len(scheme)))
 
-    plt.figure()
-    plt.plot(x_smooth, Texact(x_smooth), label = 'Texact')
-    for scheme in enumerate(scheme):
-        fvscheme = scheme[1]
-        for i in range(6):
-            x = np.linspace(0, L, n[i]+2)
+    x_exact = np.linspace(0, L, 50)
+    plt.plot(x_exact, Texact(x_exact), label = 'Exact solution')
+
+    for j, fvscheme in enumerate(scheme):
+        for i, N in enumerate(n):
+            x = np.linspace(0, L, N+2)
             T_exact = Texact(x)
-            T, TT, solve_time = do_simulation(n[i], L, Pe, problem, fvscheme, plot = False)
-            ERROR[i,scheme[0]] = np.max(abs(TT-T_exact))
-            plt.plot(x, TT[0,:],  label = 'T and n = ' + str(n[i]) + ' and fvscheme = ' + fvscheme)
-    
+            T, TT, solve_time = do_simulation(N, L, Pe, problem, fvscheme, plot = False)
+            ERROR[i,j] = np.max(abs(TT[2,:]-T_exact))
+
+            plt.plot(x, TT[2,:],  label = 'T and n = ' + str(N) + ' and fvscheme = ' + fvscheme)
+ 
     plt.legend()
     plt.show()
     print(ERROR)
@@ -367,17 +365,17 @@ def convergence_rate(L, Pe = 10):
 
 
 if __name__=="__main__":
-    #n = 10
+    n = 46
     L = 1
     # P = 1.5
     # Pe = P * n
-    #Pe = 10
-    #problem = 1
-    #fvscheme = 'cds'
+    Pe = 7
+    problem = 2
+    fvscheme = 'cds'
 
-    #T, TT, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = False)
+    T, TT, solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
 
-    TT = convergence_rate(L, Pe = 10)
+    #TT = convergence_rate(L, Pe = 10)
 
 
     plt.show()
