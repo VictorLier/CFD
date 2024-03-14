@@ -294,7 +294,7 @@ def convergence_rate(L, Pe = 10):
     scheme = ['cds', 'uds']
     Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
 
-    n = np.array([10, 20, 40, 80, 160, 320])
+    n = np.array([10, 20, 40, 80, 160, 320, 640])
     ERROR = np.zeros((len(n), len(scheme)))
 
     for j, fvscheme in enumerate(scheme):
@@ -324,13 +324,17 @@ def convergence_rate(L, Pe = 10):
     plt.grid()
     plt.legend()
     plt.show()
+    
+    #Til Latex
+    Latex = np.array([n,ERROR[:,0], ERROR[:,1]]).T
+    
     return TT
 
 
 
 
 if __name__=="__main__":
-    n = 1000
+    n = 10
     L = 1
     # P = 1.5
     # Pe = P * n
@@ -345,7 +349,7 @@ if __name__=="__main__":
     print(Time3)
     print(solve_time)
 
-    # TT = convergence_rate(L, Pe = 10)
+    TT = convergence_rate(L, Pe = 10)
 
 
     plt.show()
