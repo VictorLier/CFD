@@ -59,7 +59,7 @@ def coef_matrix(n,dx,Pe,fvscheme,Fw,Fe,Fs,Fn):
     
     raise NotImplementedError("fvscheme not implemented")
 
-def impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP):
+def impose_boundary(n, dx, xc, problem, fvscheme, aW, aE, aS, aN, aP):
     """
     return s, aW, aE, aS, aN, aP
     """
@@ -75,13 +75,10 @@ def impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP):
         aP[-1,:] = aP[-1,:] + aN[-1,:]
         s[-1,:] = s[-1,:] - aN[-1,:]*dx*DTgn
         aN[-1,:] = 0
-
         ## South
         aP[0,:] = aP[0,:] + aS[0,:]
         s[0,:] = s[0,:] + aS[0,:]*dx*DTgs
         aS[0,:] = 0
-        
-        
         # Dirichlet boundary conditions
         ## West
         aP[:,0] = aP[:,0] - aW[:,0]
@@ -268,7 +265,7 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     UFw, UFe, VFs,VFn = convectiveVelocityField(problem, n, xf)
     Fw, Fe, Fs, Fn = convective_face_matrix(n, dx, Pe, UFw, UFe, VFs, VFn)
     aW, aE, aS, aN, aP = coef_matrix(n,dx,Pe,fvscheme,Fw,Fe,Fs,Fn)
-    s, aW, aE, aS, aN, aP = impose_boundary(n, dx, xc, problem, aW, aE, aS, aN, aP)
+    s, aW, aE, aS, aN, aP = impose_boundary(n, dx, xc, problem, fvscheme, aW, aE, aS, aN, aP)
     D = assemble_matrix(n, aW, aE, aS, aN, aP)
     T, solve_time = solve(D, s, n)
     TT = extrapolate_temperature_field_to_walls(n, dx, fvscheme, problem, T, xc)
@@ -277,7 +274,7 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     
     if plot:
         plot_temperature_field(xc, TT, dx, L)
-    return T, TT, dT, Flux, solve_time
+    return T, TT, dT, Flux, solve_time, xc
 
 
 
@@ -287,24 +284,30 @@ def convergence_rate(L, Pe = 10):
     scheme = ['cds', 'uds']
     Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
 
-    n = np.array([10, 20, 40, 80, 160])
+    n = np.array([10, 20, 40, 80, 160, 320])
     ERROR = np.zeros((len(n), len(scheme)))
-
-    x_exact = np.linspace(0, L, 50)
-    plt.plot(x_exact, Texact(x_exact), label = 'Exact solution')
 
     for j, fvscheme in enumerate(scheme):
         for i, N in enumerate(n):
-            x = np.linspace(0, L, N+2)
-            T_exact = Texact(x)
-            T, TT, solve_time = do_simulation(N, L, Pe, problem, fvscheme, plot = False)
-            ERROR[i,j] = np.max(abs(TT[2,:]-T_exact))
+        
+            T, TT, solve_time, Flux, solve_time, xc = do_simulation(N, L, Pe, problem, fvscheme, plot = False)
+            T_exact = Texact(xc)
 
-            plt.plot(x, TT[2,:],  label = 'T and n = ' + str(N) + ' and fvscheme = ' + fvscheme)
- 
+            ERROR[i,j] = np.max(abs(T[2,:]-T_exact))
+            
+            #x_exact = np.linspace(np.min(xc), np.max(xc), 100)
+            #if j == 1:
+            #    plt.plot(x_exact, Texact(x_exact), label = 'Exact solution')
+
+            plt.plot(xc, T[2,:], marker = '.',  label = 'T and n = ' + str(N) + ' and fvscheme = ' + fvscheme)
+    
+    slope_cds = np.polyfit(np.log(n), np.log(ERROR[:,0]), 1)[0]
+    slope_uds = np.polyfit(np.log(n), np.log(ERROR[:,1]), 1)[0]
+
+    print('The slope for the CDS scheme is: ', slope_cds)
+    print('The slope for the UDS scheme is: ', slope_uds)
     plt.legend()
     plt.show()
-    print(ERROR)
     plt.figure()
     plt.loglog(n, ERROR[:,0], label = 'cds')
     plt.loglog(n, ERROR[:,1], label = 'uds')
@@ -317,17 +320,17 @@ def convergence_rate(L, Pe = 10):
 
 
 if __name__=="__main__":
-    n = 46
+    #n = 50
     L = 1
     # P = 1.5
     # Pe = P * n
-    Pe = 7
-    problem = 2
-    fvscheme = 'cds'
+    #Pe = 10
+    #problem = 1
+    #fvscheme = 'cds'
 
-    #T, TT, dT, Flux solve_time = do_simulation(n, L, Pe, problem, fvscheme, plot = False)
+    #T, TT, dT, Flux, solve_time, xc = do_simulation(n, L, Pe, problem, fvscheme, plot = True)
 
-    #TT = convergence_rate(L, Pe = 10)
+    TT = convergence_rate(L, Pe = 10)
 
 
     plt.show()
