@@ -104,7 +104,7 @@ if __name__ == "__main__":
     if True:
         convergence_test_uniform()
 
-    if False:
+    if True:
         convergence_test_general()
 
     plt.show()
