@@ -134,7 +134,7 @@ def assemble_matrix(n, aW, aE, aS, aN, aP):
     D = Dt.T
     et = time.perf_counter()
     Time2 = et - st
-    print(Time, Time2)
+    #print(Time, Time2)
     return D
 
 def solve(A, s, n):

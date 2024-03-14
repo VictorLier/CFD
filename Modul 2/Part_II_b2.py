@@ -5,7 +5,7 @@ from FiniteVolume2D import do_simulation
 
 n = 50
 L = 1
-Pe_ = np.round(np.logspace(1, 7, num=7))
+Pe_ = np.round(np.logspace(1, 9, num=15))
 problem = 2
 fvscheme = 'uds'
 
@@ -42,4 +42,9 @@ for i in range(len(Pe_)):
 ax2.tick_params(axis='y', labelcolor=color)
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+import tikzplotlib
+tikzplotlib.save("WestFlux.tex")
+
+
 plt.show()

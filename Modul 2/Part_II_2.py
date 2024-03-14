@@ -52,7 +52,7 @@ def check_flux_west_wall():
     problem = 2
     L = 1
     Pe = 10
-    N = [5, 40, 80, 160, 320]
+    N = [5, 10, 20, 40, 80, 160, 320, 640]
 
     dT_w_cds = []
     dT_w_uds = []
@@ -74,7 +74,7 @@ def check_flux_west_wall():
     plt.semilogx(N, dT_w_uds, marker = '.', label='UDS')
     plt.xlabel('Number of cells')
     plt.ylabel('Flux')
-    plt.legend()
+    #plt.legend()
     plt.grid(True, which='both', linestyle='dashed')  # Add dashed gridlines for both major and minor ticks
     plt.minorticks_on()  # Show minor ticks
     plt.tight_layout()
@@ -83,7 +83,7 @@ def check_flux_west_wall():
 def get_west_flux_uds():
     problem = 2
     L = 1
-    Pe = np.round(np.logspace(0, 8, num=13))
+    Pe = np.round(np.logspace(0, 8, num=20))
     N = [50, 100, 150, 200, 250]
     
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -103,7 +103,7 @@ def get_west_flux_uds():
     
     ax.set_xlabel('Peclet number')
     ax.set_ylabel('Flux')
-    ax.legend()
+    #ax.legend()
     ax.grid(True, which='both', linestyle='dashed')  # Add dashed gridlines for both major and minor ticks
     ax.minorticks_on()  # Show minor ticks
     ax.xaxis.set_minor_locator(mticker.LogLocator(numticks=999, subs="auto"))  # Set minor tick locator
@@ -120,6 +120,9 @@ def get_west_flux_uds():
 
 if __name__=="__main__":
     # check_global_conservation()
-    # check_flux_west_wall()
-    get_west_flux_uds()
+    check_flux_west_wall()
+    # get_west_flux_uds()
+    import tikzplotlib
+    tikzplotlib.save("WestFlux.tex")
+
     plt.show()
