@@ -98,9 +98,12 @@ def convergence_test_general():
         #plt.scatter(np.log(N), TL[i, :])
     plt.xlabel("N")
     plt.ylabel("Error")
-    plt.legend()
+    #plt.legend()
     plt.grid()
         
+    import tikzplotlib
+    tikzplotlib.save("WestFlux.tex")
+
     stop = True
         
 

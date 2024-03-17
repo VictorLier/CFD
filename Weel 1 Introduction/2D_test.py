@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import scipy.sparse as sps
-import array_to_latex as a2l
+#import array_to_latex as a2l
 
 from fdcoeff_1d import diffmatrix_1d_general
 
@@ -67,7 +67,10 @@ plt.loglog(N, error, label=f"Slope: {roc:.2f}", marker="o")
 # plt.semilogx(N, TL)
 plt.xlabel("N")
 plt.ylabel("Error")
-plt.legend()
+#plt.legend()
 plt.grid()
+
+import tikzplotlib
+tikzplotlib.save("WestFlux.tex")
 
 plt.show()
