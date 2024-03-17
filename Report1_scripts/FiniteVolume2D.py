@@ -2,8 +2,6 @@ import numpy as np
 import scipy.sparse as sps
 import matplotlib.pyplot as plt
 import time
-from matplotlib.ticker import AutoMinorLocator
-
 
 def convectiveVelocityField(problem, n, xf):
     '''
@@ -279,44 +277,6 @@ def do_simulation(n, L, Pe, problem, fvscheme, plot = False):
     return T, TT, dT, Flux, solve_time, xc
 
 
-
-
-def convergence_rate(L, Pe = 10):
-    problem = 1
-    scheme = ['cds', 'uds']
-    Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
-
-    n = np.array([10, 20, 40, 80, 160, 320])
-    ERROR = np.zeros((len(n), len(scheme)))
-
-    for j, fvscheme in enumerate(scheme):
-        for i, N in enumerate(n):
-        
-            T, TT, solve_time, Flux, solve_time, xc = do_simulation(N, L, Pe, problem, fvscheme, plot = False)
-            T_exact = Texact(xc)
-
-            ERROR[i,j] = np.max(abs(T[2,:]-T_exact))
-            
-            #x_exact = np.linspace(np.min(xc), np.max(xc), 100)
-            #if j == 1:
-            #    plt.plot(x_exact, Texact(x_exact), label = 'Exact solution')
-
-            plt.plot(xc, T[2,:], marker = '.',  label = 'T and n = ' + str(N) + ' and fvscheme = ' + fvscheme)
-    
-    slope_cds = np.polyfit(np.log(n), np.log(ERROR[:,0]), 1)[0]
-    slope_uds = np.polyfit(np.log(n), np.log(ERROR[:,1]), 1)[0]
-
-    print('The slope for the CDS scheme is: ', slope_cds)
-    print('The slope for the UDS scheme is: ', slope_uds)
-    plt.legend()
-    plt.show()
-    plt.figure()
-    plt.loglog(n, ERROR[:,0], label = 'cds')
-    plt.loglog(n, ERROR[:,1], label = 'uds')
-    plt.grid()
-    plt.legend()
-    plt.show()
-    return TT
 
 
 

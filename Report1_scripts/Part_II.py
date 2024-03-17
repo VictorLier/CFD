@@ -5,12 +5,50 @@ import matplotlib.ticker as mticker
 
 from FiniteVolume2D import do_simulation
 
+def convergence_rate():
+    # Corrosponds to Part II 1a
+    L = 1
+    Pe = 10
+    problem = 1
+    scheme = ['cds', 'uds']
+    Texact = lambda x: (np.exp(Pe*x)-1)/(np.exp(Pe)-1)
+
+    n = np.array([10, 20, 40, 80, 160, 320])
+    ERROR = np.zeros((len(n), len(scheme)))
+
+    for j, fvscheme in enumerate(scheme):
+        for i, N in enumerate(n):
+        
+            T, TT, solve_time, Flux, solve_time, xc = do_simulation(N, L, Pe, problem, fvscheme, plot = False)
+            T_exact = Texact(xc)
+
+            ERROR[i,j] = np.max(abs(T[2,:]-T_exact))
+            
+            #x_exact = np.linspace(np.min(xc), np.max(xc), 100)
+            #if j == 1:
+            #    plt.plot(x_exact, Texact(x_exact), label = 'Exact solution')
+
+            plt.plot(xc, T[2,:], marker = '.',  label = 'T and n = ' + str(N) + ' and fvscheme = ' + fvscheme)
+    
+    slope_cds = np.polyfit(np.log(n), np.log(ERROR[:,0]), 1)[0]
+    slope_uds = np.polyfit(np.log(n), np.log(ERROR[:,1]), 1)[0]
+
+    print('The slope for the CDS scheme is: ', slope_cds)
+    print('The slope for the UDS scheme is: ', slope_uds)
+    plt.legend()
+    plt.figure()
+    plt.loglog(n, ERROR[:,0], label = 'cds')
+    plt.loglog(n, ERROR[:,1], label = 'uds')
+    plt.grid()
+    plt.legend()
+    return TT
+
 def check_global_conservation():
+    # Corrosponds to Part II 2a
     problem = 2
     L = 1
     Pe = 10
-    # N = [5, 10, 20, 40, 80, 160, 320, 640]
-    N = [40, 80, 160]
+    N = [5, 10, 20, 40, 80, 160, 320]
     # N = np.round(np.logspace(1, 3, 10)).astype(int)
 
     flux_cds = []
@@ -51,13 +89,13 @@ def check_global_conservation():
     plt.minorticks_on()
     plt.tight_layout()
     
-
 def check_flux_west_wall():
+    # Corrosponds to Part II 2a
     problem = 2
     L = 1
     Pe = 10
-    # N = [40, 80, 160, 320, 640]
-    N = np.round(np.logspace(1, 3, 10)).astype(int)
+    N = [40, 80, 160, 320]
+    # N = np.round(np.logspace(1, 3, 10)).astype(int)
 
     dT_w_cds = []
     dT_w_uds = []
@@ -73,10 +111,6 @@ def check_flux_west_wall():
 
     dT_w_cds = np.array(dT_w_cds)
     dT_w_uds = np.array(dT_w_uds)
-    for n, f in zip(N, dT_w_cds):
-        print(n, f)
-    for n, f in zip(N, dT_w_uds):
-        print(n, f)
 
     plt.figure(figsize=(10, 5))
     plt.semilogx(N, dT_w_cds, marker = '.', label='CDS')
@@ -88,11 +122,11 @@ def check_flux_west_wall():
     plt.minorticks_on()  # Show minor ticks
     plt.tight_layout()
 
-
 def get_west_flux_uds():
+    # Corrosponds to Part II 2b
     problem = 2
     L = 1
-    Pe = np.round(np.logspace(0, 8, num=20))
+    Pe = np.round(np.logspace(0, 8, num=10))
     N = [50, 100, 150, 200, 250]
     
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -121,14 +155,11 @@ def get_west_flux_uds():
 
     plt.tight_layout()
 
-        
-
-            
-
 
 
 if __name__=="__main__":
+    convergence_rate()
     check_global_conservation()
-    # check_flux_west_wall()
-    # get_west_flux_uds()
+    check_flux_west_wall()
+    get_west_flux_uds()
     plt.show()

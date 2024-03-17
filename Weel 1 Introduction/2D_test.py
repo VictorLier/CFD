@@ -7,7 +7,7 @@ import array_to_latex as a2l
 from fdcoeff_1d import diffmatrix_1d_general
 
 
-def fdcoeff_2d_general(DERx, DERy, x, y, a, b):
+def fdcoeff_2d_general(DERx, DERy, x, y, a, b, n):
     Dx = diffmatrix_1d_general(DERx,x,a,b)
     Dy = diffmatrix_1d_general(DERy,y,a,b)
 
@@ -24,7 +24,7 @@ def fdcoeff_2d_general(DERx, DERy, x, y, a, b):
 
 
 #Input
-N = np.array([20, 40, 80, 160, 320, 640, 1280])
+N = np.array([10, 20, 40, 80, 160, 320, 640, 1280])
 L = 1
 a = 1
 b = 1
@@ -47,7 +47,7 @@ for i, n in enumerate(N):
     fun = np.sin(k*X)*np.sin(k*Y)
     dfun = k*k*np.cos(k*X)*np.cos(k*Y)
 
-    D_xy = fdcoeff_2d_general(DERx, DERy, x, y, a, b)
+    D_xy = fdcoeff_2d_general(DERx, DERy, x, y, a, b, n)
 
     fun_flat = fun.flatten()
     dfun_flat = D_xy.dot(fun_flat)
