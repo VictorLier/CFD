@@ -120,6 +120,11 @@ class CFDSim:
             self.H1 = H1
             self.H2 = H2
          
+        # H1w = self.H1[:,:-1]
+        # H1e = self.H1[:,1:]
+        # H2s = self.H2[:-1,:]
+        # H2n = self.H2[1:,:]
+
         H1w = self.H1[1:-1,:-1]
         H1e = self.H1[1:-1,1:]
         H2s = self.H2[:-1,1:-1]
@@ -165,12 +170,6 @@ class CFDSim:
         A, s = self.NS2LaplaceMatrix(H1, H2)
         self.p = sps.linalg.spsolve(A, s.flatten('F')).reshape(self.n, self.n)    
         return self.p
-
-        print("stop")
-
-
-
-
 
 
 class testCFDSim:
@@ -228,7 +227,7 @@ class testCFDSim:
     def NS2dValidatePoissonSolver(self, K):
         H1e = lambda x,y: -K * np.sin(K*x)*np.cos(K*y)
         H2e = lambda x,y: -K * np.cos(K*x)*np.sin(K*y)
-        Pe = lambda x,y: np.cos(K*x)*np.sin(K*y)
+        Pe = lambda x,y: np.cos(K*x)*np.cos(K*y)
 
         PError = np.zeros(len(self.fields))
 
@@ -237,7 +236,7 @@ class testCFDSim:
             Xv, Yv = f.Xv, f.Yv
             Xp, Yp = f.Xp, f.Yp
             H1exact = H1e(Xu, Yu)
-            H2exact = H2e(Xv, Yv)            
+            H2exact = H2e(Xv, Yv)       
             P = f.PoisonSolver(H1exact, H2exact)
             Pexact = Pe(Xp, Yp)
             Pmean = P - np.mean(P) 
@@ -281,11 +280,12 @@ if __name__ == "__main__":
         test.NS2dValidateHfunction()
 
     if True: # Question 3
-        N = np.round(np.logspace(1, 2, 10)).astype(int)
+        N = np.round(np.logspace(1, 3, 10)).astype(int)
+        # N = np.array([9, 20, 40, 80])
         K = np.array([1, 2, 3, 4]) * np.pi
         Re = 3
 
         test = testCFDSim(N, Re, K)
-        test.NS2dValidatePoissonSolver(1)
+        test.NS2dValidatePoissonSolver(2*np.pi)
 
     print("stop")
