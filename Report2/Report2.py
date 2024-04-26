@@ -6,10 +6,32 @@ import matplotlib.pyplot as plt
 import scipy.sparse as sps
 
 class CFDSim:
-    def __init__(self, _n, _Re) -> None:
+    def __init__(self, _n, _Re, Ulid = 1, maxstep = 100, dt = None, steadytol = 0.00001) -> None:
         self.n = _n
         self.Re = _Re
+        self.Ulid = Ulid
+        self.maxstep = maxstep
         self.StaggeredMesh2d()
+        self.dt = self.get_dt(dt)
+        self.steadytol = steadytol
+        self.p = np.zeros((self.n, self.n))
+        self.gmchist = np.zeros(self.maxstep)
+        self.cmchist = np.zeros(self.maxstep)
+        self.steadyhist = np.zeros(self.maxstep)
+
+        self.u = None
+        self.v = None
+
+        self.A = None
+        self.s = None
+
+
+
+    def get_dt(self, dt):
+        if dt is None:
+            return np.min([self.Re * self.dx**2 / 4, 1 / (self.Ulid**2 * self.Re)])/10
+        else:
+            return dt
 
     def StaggeredMesh2d(self):
         self.dx = 1/self.n   # cell size in x,y
@@ -29,14 +51,16 @@ class CFDSim:
     
     def LidDrivenCavity(self):
         self.u = np.zeros((self.n+2, self.n+1))
-        self.u[1:-1,:] = self.Xu[1:-1,:] * (1 - self.Xu[1:-1,:])
-        self.u[-1,:] = 1
+        # self.u[1:-1,:] = self.Xu[1:-1,:] * (1 - self.Xu[1:-1,:])
+        self.u[-1,:] = self.Ulid
         self.v = np.zeros((self.n+1, self.n+2))
-        self.v[:,1:-1] = self.Yv[:,1:-1] * (1 - self.Yv[:,1:-1])
+        # self.v[:,1:-1] = self.Yv[:,1:-1] * (1 - self.Yv[:,1:-1])
         self.v[:,-1] = 0
 
     def NS2dHfunctions(self, U: Callable | None = None, V: Callable | None = None, Re = None):
-        if U is None or V is None:
+        if self.u is not None or self.v is not None:
+            pass
+        elif U is None or V is None:
             self.LidDrivenCavity()
         else:
             self.u = U(self.Xu, self.Yu)
@@ -78,8 +102,6 @@ class CFDSim:
         self.H1 = np.zeros((self.n+2, self.n+1))
         self.H1[1:-1,1:-1] = 1 / self.dx * (1 / self.Re * uxe - ue**2) - 1/self.dx * (1 / self.Re * uxw - uw**2) + 1 / self.dy * (1 / self.Re * uyn - un*uvn) - 1/self.dy * (1 / self.Re * uys - us*uvs)
 
-
-
         # V-Grid
         # North and south
         vn = np.zeros((self.n-1, self.n))
@@ -115,15 +137,56 @@ class CFDSim:
         self.H2[1:-1,1:-1] = 1 / self.dx * (1 / self.Re * vxe - ve*vue) - 1/self.dx * (1 / self.Re * vxw - vw*vuw) + 1 / self.dy * (1 / self.Re * vyn - vn**2) - 1/self.dy * (1 / self.Re * vys - vs**2)
         return self.H1, self.H2
     
-    def NS2LaplaceMatrix(self, H1 = None, H2 = None):
+    def NS2LaplaceMatrix(self):
+        # if H1 is not None or H2 is not None:
+        #     self.H1 = H1
+        #     self.H2 = H2
+
+        # H1w = self.H1[1:-1,:-1]
+        # H1e = self.H1[1:-1,1:]
+        # H2s = self.H2[:-1,1:-1]
+        # H2n = self.H2[1:,1:-1]
+
+        # s = (H1e - H1w) * self.dy + (H2n - H2s) * self.dx
+        
+
+        # Assuming dx = dy:
+        self._a_n = np.full([self.n, self.n], 1)
+        self._a_s = np.full([self.n, self.n], 1)
+        self._a_e = np.full([self.n, self.n], 1)
+        self._a_w = np.full([self.n, self.n], 1)
+        self._a_p = -(self._a_n + self._a_s + self._a_e + self._a_w)
+
+        # North
+        self._a_p[-1,:] =  self._a_p[-1,:] + self._a_n[-1,:]
+        self._a_n[-1,:] = 0
+        # s[-1,:] = s[-1,:] - self.dy*a_n[-1,:]*self.H2[self.n-1,1:-1]
+
+        # South
+        self._a_p[0,:] =  self._a_p[0,:] + self._a_s[0,:]
+        self._a_s[0,:] = 0
+        # s[0,:] = s[0,:] + self.dy*a_s[0,:]*self.H2[0,1:-1]
+
+        # East
+        self._a_p[:,-1] =  self._a_p[:,-1] + self._a_e[:,-1]
+        self._a_e[:,-1] = 0
+        # s[:,-1] = s[:,-1] + self.dx*a_e[:,-1]*self.H1[1:-1,self.n-1]
+
+        # West
+        self._a_p[:,0] =  self._a_p[:,0] + self._a_w[:,0]
+        self._a_w[:,0] = 0
+        # s[:,0] = s[:,0] + self.dx*a_w[:,0]*self.H1[1:-1,0]
+        # self.s = s
+
+        data = np.array([self._a_p.flatten('F'), self._a_e.flatten('F'), self._a_n.flatten('F'), self._a_s.flatten('F'), self._a_w.flatten('F')])
+
+        self.A = sps.spdiags(data, [0, -self.n, -1, 1, self.n], self.n*self.n, self.n*self.n, format = 'csr').T
+        return self.A
+    
+    def get_source(self, H1 = None, H2 = None):
         if H1 is not None or H2 is not None:
             self.H1 = H1
             self.H2 = H2
-         
-        # H1w = self.H1[:,:-1]
-        # H1e = self.H1[:,1:]
-        # H2s = self.H2[:-1,:]
-        # H2n = self.H2[1:,:]
 
         H1w = self.H1[1:-1,:-1]
         H1e = self.H1[1:-1,1:]
@@ -131,45 +194,65 @@ class CFDSim:
         H2n = self.H2[1:,1:-1]
 
         s = (H1e - H1w) * self.dy + (H2n - H2s) * self.dx
-        
-
-        # Assuming dx = dy:
-        a_n = np.full([self.n, self.n], 1)
-        a_s = np.full([self.n, self.n], 1)
-        a_e = np.full([self.n, self.n], 1)
-        a_w = np.full([self.n, self.n], 1)
-        a_p = -(a_n + a_s + a_e + a_w)
 
         # North
-        a_p[-1,:] =  a_p[-1,:] + a_n[-1,:]
-        a_n[-1,:] = 0
-        s[-1,:] = s[-1,:] - self.dy*a_n[-1,:]*self.H2[self.n-1,1:-1]
+        s[-1,:] = s[-1,:] - self.dy*self._a_n[-1,:]*self.H2[self.n-1,1:-1]
 
         # South
-        a_p[0,:] =  a_p[0,:] + a_s[0,:]
-        a_s[0,:] = 0
-        s[0,:] = s[0,:] + self.dy*a_s[0,:]*self.H2[0,1:-1]
-
+        s[0,:] = s[0,:] + self.dy*self._a_s[0,:]*self.H2[0,1:-1]
+        
         # East
-        a_p[:,-1] =  a_p[:,-1] + a_e[:,-1]
-        a_e[:,-1] = 0
-        s[:,-1] = s[:,-1] + self.dx*a_e[:,-1]*self.H1[1:-1,self.n-1]
+        s[:,-1] = s[:,-1] + self.dx*self._a_e[:,-1]*self.H1[1:-1,self.n-1]
 
         # West
-        a_p[:,0] =  a_p[:,0] + a_w[:,0]
-        a_w[:,0] = 0
-        s[:,0] = s[:,0] + self.dx*a_w[:,0]*self.H1[1:-1,0]
+        s[:,0] = s[:,0] + self.dx*self._a_w[:,0]*self.H1[1:-1,0]
         self.s = s
 
-        data = np.array([a_p.flatten('F'), a_e.flatten('F'), a_n.flatten('F'), a_s.flatten('F'), a_w.flatten('F')])
-
-        self.A = sps.spdiags(data, [0, -self.n, -1, 1, self.n], self.n*self.n, self.n*self.n, format = 'csr').T
-        return self.A, self.s
 
     def PoisonSolver(self, H1 = None, H2 = None):
-        A, s = self.NS2LaplaceMatrix(H1, H2)
-        self.p = sps.linalg.spsolve(A, s.flatten('F')).reshape(self.n, self.n)    
+        if self.A is None:
+            self.NS2LaplaceMatrix()
+        self.get_source(H1, H2)
+        # _p = sps.linalg.spsolve(self.A, self.s.flatten('F')).reshape(self.n, self.n)
+        _p = sps.linalg.spsolve(self.A, self.s.flatten()).reshape(self.n, self.n)
+        self.p = _p - _p[np.ceil(self.n/2-1).astype(int), np.ceil(self.n/2-1).astype(int)]
         return self.p
+
+    def NS2dMovingLidSquareCavityFlow(self):
+        self.NS2LaplaceMatrix()
+        self.LidDrivenCavity()
+        u_step = self.u.copy()
+        v_step = self.v.copy()
+        steadytest = 1
+        step = 0
+        while steadytest < self.steadytol or step < self.maxstep:
+            step += 1
+            self.NS2dHfunctions()
+            self.PoisonSolver()
+
+            dudt = self.H1[1:-1,1:-1] - 1 / self.dx * (self.p[:,1:] - self.p[:,:-1])
+            dvdt = self.H2[1:-1,1:-1] - 1 / self.dy * (self.p[1:,:] - self.p[:-1,:])
+
+            u_step[1:-1, 1:-1] = self.u[1:-1, 1:-1] + self.dt * dudt
+            v_step[1:-1, 1:-1] = self.v[1:-1, 1:-1] + self.dt * dvdt
+
+            self.u = u_step.copy()
+            self.v = v_step.copy()
+
+            dudx = (self.u[1:-1, 1:] - self.u[1:-1, :-1]) / self.dx
+            dvdy = (self.v[1:, 1:-1] - self.v[:-1, 1:-1]) / self.dy
+
+            self.cmchist[step-1] = np.max(np.abs(dudx + dvdy[:,-1]))
+            self.gmchist[step-1] = np.sum(np.abs(dudx + dvdy[:,-1]))
+
+            steadytest = np.max(np.abs(dudt+dvdt))
+
+            progress = np.int(np.round(step/self.maxstep*100))
+            print(f"Step: {step}/{self.maxstep} - Progress: {progress}%", end="\r")
+            
+            print("stop")
+
+
 
 
 class testCFDSim:
@@ -222,7 +305,6 @@ class testCFDSim:
         plt.loglog(self.N, H2Error, label=f"Slope H2: {slopeH2:.2f}", marker="o")
         plt.legend()
         plt.grid()
-        plt.show()
 
     def NS2dValidatePoissonSolver(self, K):
         H1e = lambda x,y: -K * np.sin(K*x)*np.cos(K*y)
@@ -249,9 +331,6 @@ class testCFDSim:
         plt.loglog(self.N, PError, label=f"Slope P: {slopeP:.2f}", marker="o")
         plt.legend()
         plt.grid()
-        plt.show()
-
-
 
             
 
@@ -279,13 +358,18 @@ if __name__ == "__main__":
         test = testCFDSim(N, Re, K)
         test.NS2dValidateHfunction()
 
-    if True: # Question 3
-        N = np.round(np.logspace(1, 3, 10)).astype(int)
+    if False: # Question 3
+        N = np.round(np.logspace(1, 2, 10)).astype(int)
         # N = np.array([9, 20, 40, 80])
         K = np.array([1, 2, 3, 4]) * np.pi
         Re = 3
 
         test = testCFDSim(N, Re, K)
         test.NS2dValidatePoissonSolver(2*np.pi)
+    
+    if True: # Question 4
+        sim = CFDSim(_n = 7, _Re = 3, dt=0.01, Ulid=-1)
+        sim.NS2dMovingLidSquareCavityFlow()
+        print("stop")
 
-    print("stop")
+    plt.show()
