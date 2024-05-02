@@ -29,7 +29,7 @@ class CFDSim:
 
 
     def get_dt(self, dt):
-        dt_min = np.min([self.Re * self.dx**2 / 4, 1 / (self.Ulid**2 * self.Re)])/10
+        dt_min = np.min([self.Re * self.dx**2 / 4, 1 / (self.Ulid**2 * self.Re)])/3
         if dt is None:
             return dt_min
         else:
@@ -247,7 +247,7 @@ class CFDSim:
             self.cmchist[step-1] = np.max(np.abs(dudx + dvdy))
             self.gmchist[step-1] = np.sum(np.abs(dudx + dvdy))
 
-            steadytest = np.max(np.abs(dudt.flatten()+dvdt.flatten()))
+            steadytest = np.max(np.abs(dudt)) + np.max(np.abs(dvdt))
 
             progress = self.steadytol/steadytest*100
             print(f"Step: {step}/{self.maxstep} - Progress: {progress:.3f}%")
@@ -260,18 +260,28 @@ class CFDSim:
 
         if plot:
             # Show the velocity field using streamlines
-            plt.figure()
+            plt.figure(figsize=(5, 5))
             plt.streamplot(self.Xp, self.Yp, u_p[1:-1,1:-1], v_p[1:-1,1:-1])
             plt.title("Velocity Field")
             plt.xlabel("x")
             plt.ylabel("y")
-            plt.grid()
+            plt.xlim((0, 1))
+            plt.ylim((0, 1))
 
+            # Make a contour plot of the pressure field
+            plt.figure(figsize=(7, 5))
+            plt.contourf(self.Xp, self.Yp, self.p)
+            plt.colorbar(label='Pressure')
+            plt.title('Pressure Field')
+            plt.xlabel('x')
+            plt.ylabel('y')
+            plt.xlim((0, 1))
+            plt.ylim((0, 1))
 
 
             plt.figure()
             plt.plot(np.arange(step), self.gmchist[:step], label="Global Mass Conservation")
-            plt.plot(np.arange(step), self.cmchist[:step], label="Continuity Mass Conservation")
+            plt.plot(np.arange(step), self.cmchist[:step], label="Local Mass Conservation")
             plt.title("Mass Conservation")
             plt.xlabel("Step")
             plt.ylabel("Conservation")
@@ -399,7 +409,7 @@ if __name__ == "__main__":
         test.NS2dValidatePoissonSolver(2*np.pi)
     
     if True: # Question 4
-        sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1)
+        sim = CFDSim(_n = 21, _Re = 1000, dt=0.01, Ulid=-1)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
         print("stop")
 
