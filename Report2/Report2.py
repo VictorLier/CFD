@@ -430,8 +430,12 @@ if __name__ == "__main__":
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
         print("stop")
 
-    if True: # Question 6
+    if False: # Question 6
         sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1, div_correction=True)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
+
+    if True: # Question 7
+        sim = CFDSim(_n = 21, _Re = 100, dt=0.01, Ulid=-1, div_correction=True)
+        sim.NS2dMovingLidSquareCavityFlow(plot = True, LU_optimization=True)
 
     plt.show()
