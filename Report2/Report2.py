@@ -302,8 +302,8 @@ class CFDSim:
             plt.legend()
             plt.grid()
 
-            np.savetxt("GlobalMassConservation.txt", np.array([np.arange(step), self.gmchist[:step]]).T)
-            np.savetxt("ContinuityMassConservation.txt", np.array([np.arange(step), self.cmchist[:step]]).T)
+            # np.savetxt("GlobalMassConservation.txt", np.array([np.arange(step), self.gmchist[:step]]).T)
+            # np.savetxt("ContinuityMassConservation.txt", np.array([np.arange(step), self.cmchist[:step]]).T)
 
 
 
