@@ -220,7 +220,7 @@ class CFDSim:
         return self.p
 
     def LU_PoisonSolver(self, H1 = None, H2 = None):
-        if self.A is None or self.LU is None or self.p_LU is None:
+        if self.A is None or self.LU is None:
             self.NS2LaplaceMatrix()
             self.LU = sps.linalg.splu(self.A)
 
