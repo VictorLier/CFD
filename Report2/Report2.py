@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["font.size"] = "12"
 plt.rcParams["font.family"] = "serif"
 import scipy.sparse as sps
+import time
 
 class CFDSim:
     def __init__(self, _n, _Re, Ulid = 1, maxstep = 100000, dt = None, steadytol = 10e-3, div_correction:bool=False) -> None:
@@ -220,13 +221,14 @@ class CFDSim:
         return self.p
 
     def LU_PoisonSolver(self, H1 = None, H2 = None):
-        if self.A is None or self.LU is None or self.p_LU is None:
+        if self.A is None or self.LU is None:
             self.NS2LaplaceMatrix()
             self.LU = sps.linalg.splu(self.A)
 
         self.get_source(H1, H2)
-        # _p = sps.linalg.spsolve(self.A, self.s.flatten('F')).reshape(self.n, self.n)
-        _p = self.LU.solve(self.s).reshape(self.n, self.n)
+
+        _p = self.LU.solve(self.s.flatten()).reshape(self.n, self.n)
+
         self.p = _p.copy() - _p[np.ceil(self.n/2-1).astype(int), np.ceil(self.n/2-1).astype(int)]
         # self.p = _p.copy() - np.mean(_p)
         return self.p
@@ -241,10 +243,10 @@ class CFDSim:
         while steadytest > self.steadytol and step < self.maxstep:
             step += 1
             self.NS2dHfunctions()
-            if not LU_optimization:
-                self.PoisonSolver()
-            else:
+            if LU_optimization:
                 self.LU_PoisonSolver()
+            else:
+                self.PoisonSolver()
 
             dudt = self.H1[1:-1,1:-1] - 1 / self.dx * (self.p[:,1:] - self.p[:,:-1])
             dvdt = self.H2[1:-1,1:-1] - 1 / self.dy * (self.p[1:,:] - self.p[:-1,:])
@@ -434,8 +436,111 @@ if __name__ == "__main__":
         sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1, div_correction=True)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
-    if True: # Question 7
-        sim = CFDSim(_n = 21, _Re = 100, dt=0.01, Ulid=-1, div_correction=True)
-        sim.NS2dMovingLidSquareCavityFlow(plot = True, LU_optimization=True)
+    if False: # Question 7
+    
+        n_arr = np.array([11])
+        sims = np.zeros(len(n_arr), dtype=object)
+        t_arr = np.zeros([len(n_arr), 2])
+
+        for i, n in enumerate(n_arr):
+            sims[i] = CFDSim(_n = n, _Re = 1, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-6)
+
+        for i in range(len(n_arr)):
+            start = time.time()
+            sims[i].NS2dMovingLidSquareCavityFlow(plot = False, LU_optimization=True)
+            end = time.time()
+            t_arr[i, 0] = end - start
+
+        for i in range(len(n_arr)):
+            start = time.time()
+            sims[i].NS2dMovingLidSquareCavityFlow(plot = False, LU_optimization=False)
+            end = time.time()
+            t_arr[i, 1] = end - start
+
+        slope_LU = np.polyfit(np.log(n_arr),np.log(t_arr[:,0]),1)[0]
+        slope_noLU = np.polyfit(np.log(n_arr),np.log(t_arr[:,1]),1)[0]
+
+        plt.figure()
+        plt.loglog(n_arr, t_arr[:,0], label=f"Slope LU: {slope_LU:.2f}", marker="o")
+        plt.loglog(n_arr, t_arr[:,1], label=f"Slope No LU: {slope_noLU:.2f}", marker="o")
+        plt.legend()
+        plt.grid()
+
+        np.savetxt("LUOptimization.txt", np.array([n_arr, t_arr[:,0]]).T)
+        np.savetxt("NoLUOptimization.txt", np.array([n_arr, t_arr[:,1]]).T)
+
+    if False: # Question 7B
+        n_arr = np.array([21, 51, 101])
+        sims = np.zeros(len(n_arr), dtype=object)
+        t_arr = np.zeros([len(n_arr), 2])
+
+        for i, n in enumerate(n_arr):
+            sims[i] = CFDSim(_n = n, _Re = 1, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-6)
+
+        for i in range(len(n_arr)):
+            sim = sims[i]
+            sim.NS2LaplaceMatrix()
+            sim.LidDrivenCavity()
+            sim.NS2dHfunctions()
+            
+            start = time.time()
+            sim.LU_PoisonSolver()
+            end = time.time()
+            
+            t_arr[i, 0] = end - start
+
+        for i in range(len(n_arr)):
+            sim = sims[i]
+            sim.NS2LaplaceMatrix()
+            sim.LidDrivenCavity()
+            sim.NS2dHfunctions()
+            
+            start = time.time()
+            sim.PoisonSolver()
+            end = time.time()
+            
+            t_arr[i, 1] = end - start
+
+        slope_LU = np.polyfit(np.log(n_arr),np.log(t_arr[:,0]),1)[0]
+        slope_noLU = np.polyfit(np.log(n_arr),np.log(t_arr[:,1]),1)[0]
+
+        plt.figure()
+        plt.loglog(n_arr, t_arr[:,0], label=f"Slope LU: {slope_LU:.2f}", marker="o")
+        plt.loglog(n_arr, t_arr[:,1], label=f"Slope No LU: {slope_noLU:.2f}", marker="o")
+        plt.legend()
+        plt.grid()
+
+    if True: # Question 8
+        Number = 21
+        sim = CFDSim(_n = Number, _Re = 1000, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-6, maxstep=1000000)
+        sim.NS2dMovingLidSquareCavityFlow(plot = False, LU_optimization=True)
+        U_center = sim.u[:,int(Number/2)]
+        V_center = sim.v[int(Number/2),:]
+        PX_center = sim.p[int(Number/2),:]
+        PY_center = sim.p[:,int(Number/2)]
+        print(U_center)
+        print(V_center)
+        print(PX_center)
+        print(PY_center)
+
+        x_values = np.linspace(0, 1, Number+2)
+        y_values = np.linspace(0, 1, Number+2)
+
+        A1, A2, A3 = np.polyfit(x_values, U_center, 2)
+        B1, B2, B3 = np.polyfit(y_values, V_center, 2)
+        C1, C2, C3 = np.polyfit(x_values, PX_center, 2)
+        D1, D2, D3 = np.polyfit(y_values, PY_center, 2)
+
+        y = np.array([0, 0.625, 0.1016, 0.2813, 0.5, 0.7344, 0.9531, 0.9688, 1])
+
+        U = A1*y**2 + A2*y + A3
+        
+        print(U)
+
+    if False: # Test
+        number = 3
+        Array = np.array([[1,2,3], [4,5,6], [7,8,9]])
+        print(Array[:,int(number/2)])
+
 
     plt.show()
