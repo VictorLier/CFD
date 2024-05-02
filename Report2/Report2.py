@@ -3,10 +3,12 @@ import scipy as sp
 from typing import List, Callable
 import sympy as sp
 import matplotlib.pyplot as plt
+plt.rcParams["font.size"] = "12"
+plt.rcParams["font.family"] = "serif"
 import scipy.sparse as sps
 
 class CFDSim:
-    def __init__(self, _n, _Re, Ulid = 1, maxstep = 100000, dt = None, steadytol = 10e-3) -> None:
+    def __init__(self, _n, _Re, Ulid = 1, maxstep = 100000, dt = None, steadytol = 10e-3, div_correction:bool=False) -> None:
         self.n = _n
         self.Re = _Re
         self.Ulid = Ulid
@@ -18,6 +20,8 @@ class CFDSim:
         self.gmchist = np.zeros(self.maxstep)
         self.cmchist = np.zeros(self.maxstep)
         self.steadyhist = np.zeros(self.maxstep)
+
+        self.div_correction = div_correction
 
         self.u = None
         self.v = None
@@ -173,10 +177,20 @@ class CFDSim:
             self.H1 = H1
             self.H2 = H2
 
-        H1w = self.H1[1:-1,:-1]
-        H1e = self.H1[1:-1,1:]
-        H2s = self.H2[:-1,1:-1]
-        H2n = self.H2[1:,1:-1]
+        if self.div_correction: # If divergence correction is enabled
+            H1_c = 1 / self.dt * self.u + self.H1
+            H2_c = 1 / self.dt * self.v + self.H2
+
+            H1w = H1_c[1:-1,:-1]
+            H1e = H1_c[1:-1,1:]
+            H2s = H2_c[:-1,1:-1]
+            H2n = H2_c[1:,1:-1]
+
+        else:
+            H1w = self.H1[1:-1,:-1]
+            H1e = self.H1[1:-1,1:]
+            H2s = self.H2[:-1,1:-1]
+            H2n = self.H2[1:,1:-1]
 
         s = (H1e - H1w) * self.dy + (H2n - H2s) * self.dx
 
@@ -260,9 +274,9 @@ class CFDSim:
 
         if plot:
             # Show the velocity field using streamlines
-            plt.figure()
+            plt.figure(figsize=(6, 6))
             plt.streamplot(self.Xp, self.Yp, u_p[1:-1,1:-1], v_p[1:-1,1:-1])
-            plt.title("Velocity Field")
+            plt.title(f"Streamlines, n = {self.n}, Re = {self.Re}")
             plt.xlabel("x")
             plt.ylabel("y")
             plt.grid()
@@ -277,6 +291,9 @@ class CFDSim:
             plt.ylabel("Conservation")
             plt.legend()
             plt.grid()
+
+            np.savetxt("GlobalMassConservation.txt", np.array([np.arange(step), self.gmchist[:step]]).T)
+            np.savetxt("ContinuityMassConservation.txt", np.array([np.arange(step), self.cmchist[:step]]).T)
 
 
 
@@ -398,9 +415,13 @@ if __name__ == "__main__":
         test = testCFDSim(N, Re, K)
         test.NS2dValidatePoissonSolver(2*np.pi)
     
-    if True: # Question 4
+    if False: # Question 5
         sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
         print("stop")
+
+    if True: # Question 6
+        sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1, div_correction=True)
+        sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
     plt.show()
