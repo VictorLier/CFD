@@ -2,6 +2,7 @@ import numpy as np
 import scipy as sp
 from typing import List, Callable
 import sympy as sp
+from scipy import interpolate
 import matplotlib.pyplot as plt
 plt.rcParams["font.size"] = "12"
 plt.rcParams["font.family"] = "serif"
@@ -276,13 +277,15 @@ class CFDSim:
 
         if plot:
             # Show the velocity field using streamlines
-            plt.figure(figsize=(5, 5))
+            plt.figure(figsize=(4, 4))
             plt.streamplot(self.Xp, self.Yp, u_p[1:-1,1:-1], v_p[1:-1,1:-1])
-            plt.title(f"Streamlines, n = {self.n}, Re = {self.Re}")
+            # plt.title(f"Streamlines, n = {self.n}, Re = {self.Re}")
             plt.xlabel("x")
             plt.ylabel("y")
             plt.xlim((0, 1))
             plt.ylim((0, 1))
+            plt.tight_layout()
+            plt.savefig(f"Streamlines_n{self.n}_Re{self.Re}.pdf")
 
             # Make a contour plot of the pressure field
             plt.figure(figsize=(7, 5))
@@ -433,7 +436,7 @@ if __name__ == "__main__":
         print("stop")
 
     if False: # Question 6
-        sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1, div_correction=True)
+        sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1, div_correction=False)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
     if False: # Question 7
@@ -511,31 +514,66 @@ if __name__ == "__main__":
         plt.grid()
 
     if True: # Question 8
-        Number = 21
-        sim = CFDSim(_n = Number, _Re = 1000, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-6, maxstep=1000000)
-        sim.NS2dMovingLidSquareCavityFlow(plot = False, LU_optimization=True)
-        U_center = sim.u[:,int(Number/2)]
-        V_center = sim.v[int(Number/2),:]
-        PX_center = sim.p[int(Number/2),:]
-        PY_center = sim.p[:,int(Number/2)]
-        print(U_center)
-        print(V_center)
-        print(PX_center)
-        print(PY_center)
 
-        x_values = np.linspace(0, 1, Number+2)
-        y_values = np.linspace(0, 1, Number+2)
-
-        A1, A2, A3 = np.polyfit(x_values, U_center, 2)
-        B1, B2, B3 = np.polyfit(y_values, V_center, 2)
-        C1, C2, C3 = np.polyfit(x_values, PX_center, 2)
-        D1, D2, D3 = np.polyfit(y_values, PY_center, 2)
-
-        y = np.array([0, 0.625, 0.1016, 0.2813, 0.5, 0.7344, 0.9531, 0.9688, 1])
-
-        U = A1*y**2 + A2*y + A3
         
-        print(U)
+        Y = np.array([[ 1.0000, -1.00000,  0.052971],
+                 [ 0.9688, -0.58031,  0.051493],
+                 [ 0.9531, -0.47239,  0.050314],
+                 [ 0.7344, -0.18861,  0.012113],
+                 [ 0.5000,  0.06205,  0.000000],
+                 [ 0.2813,  0.28040,  0.040381],
+                 [ 0.1016,  0.30029,  0.104416],
+                 [ 0.0625,  0.20227,  0.109160],
+                 [ 0.0000,  0.00000,  0.110560]])
+        
+        X = np.array([[ 0.0000,  0.00000,  0.077429],
+                [ 0.0391, -0.29330,  0.078658],
+                [ 0.0547, -0.41018,  0.077128],
+                [ 0.1406, -0.42634,  0.049004],
+                [ 0.5000,  0.02580,  0.000000],
+                [ 0.7734,  0.33398,  0.047259],
+                [ 0.9062,  0.33290,  0.084369],
+                [ 0.9297,  0.29627,  0.087625],
+                [ 1.0000,  0.00000,  0.090448]])
+
+        Numbers = [7, 9]
+        Errors = np.zeros([len(Numbers)+1, 4])
+
+        for i, Number in enumerate(Numbers):
+            sim = CFDSim(_n = Number, _Re = 1000, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-2, maxstep=100000000)
+            sim.NS2dMovingLidSquareCavityFlow(plot = False, LU_optimization=True)
+            Py = sim.p[int(Number/2),:]
+            Px = sim.p[:,int(Number/2)]
+            V = (sim.v[int(np.floor(Number/2)),:] + sim.v[int(np.ceil(Number/2)),:]) / 2
+            U = (sim.u[:,int(np.floor(Number/2))] + sim.u[:,int(np.ceil(Number/2))]) / 2
+            Py_values = interpolate.interp1d(sim.xc, Py, kind='cubic', fill_value='extrapolate')
+            Px_values = interpolate.interp1d(sim.xc, Px, kind='cubic', fill_value='extrapolate')
+            V_values = interpolate.interp1d(sim.xb, V, kind='cubic')
+            U_values = interpolate.interp1d(sim.xb, U, kind='cubic')
+
+            Errors[i, 0] = np.max(np.abs(Py_values(Y[:,0]) - Y[:,2]))
+            Errors[i, 1] = np.max(np.abs(Px_values(X[:,1]) - X[:,2]))
+            Errors[i, 2] = np.max(np.abs(V_values(X[:,0]) - X[:,1]))
+            Errors[i, 3] = np.max(np.abs(U_values(Y[:,0]) - Y[:,1]))
+
+        slope_Py = np.polyfit(np.log(Numbers),np.log(Errors[:-1,0]),1)[0]
+        slope_Px = np.polyfit(np.log(Numbers),np.log(Errors[:-1,1]),1)[0]
+        slope_V = np.polyfit(np.log(Numbers),np.log(Errors[:-1,2]),1)[0]
+        slope_U = np.polyfit(np.log(Numbers),np.log(Errors[:-1,3]),1)[0]
+
+        Errors[-1, 0] = slope_Py
+        Errors[-1, 1] = slope_Px
+        Errors[-1, 2] = slope_V
+        Errors[-1, 3] = slope_U
+        np.savetxt("Errors.txt", Errors)
+
+        plt.figure()
+        plt.loglog(Numbers, Errors[:-1,0], label=f"Slope Py: {slope_Py:.2f}", marker="o")
+        plt.loglog(Numbers, Errors[:-1,1], label=f"Slope Px: {slope_Px:.2f}", marker="o")
+        plt.loglog(Numbers, Errors[:-1,2], label=f"Slope V: {slope_V:.2f}", marker="o")
+        plt.loglog(Numbers, Errors[:-1,3], label=f"Slope U: {slope_U:.2f}", marker="o")
+        plt.legend()
+
 
     if False: # Test
         number = 3
