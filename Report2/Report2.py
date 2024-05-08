@@ -36,7 +36,7 @@ class CFDSim:
 
 
     def get_dt(self, dt):
-        dt_min = np.min([self.Re * self.dx**2 / 4, 1 / (self.Ulid**2 * self.Re)])/3
+        dt_min = np.min([self.Re * self.dx**2 / 4, 1 / (self.Ulid**2 * self.Re)])/2
         if dt is None:
             return dt_min
         else:
@@ -268,7 +268,8 @@ class CFDSim:
             steadytest = np.max(np.abs(dudt)) + np.max(np.abs(dvdt))
 
             progress = self.steadytol/steadytest*100
-            print(f"Step: {step}/{self.maxstep} - Progress: {progress:.3f}%")
+            # if step % 1000 == 0:
+            print(f"n = {self.n} - Step: {step}/{self.maxstep} - Progress: {progress:.3f}%")
 
         # Convert to velocities to the p-grid
         u_p = np.zeros((self.n + 2, self.n + 2))
@@ -288,15 +289,41 @@ class CFDSim:
             plt.tight_layout()
             plt.savefig(f"Streamlines_n{self.n}_Re{self.Re}.pdf")
 
+            # # Make a contour plot of the pressure field
+            # plt.figure(figsize=(4, 4))
+            # plt.pcolormesh(self.Xp, self.Yp, self.p)
+            # plt.colorbar(label='Pressure')
+            # plt.title('Pressure Field')
+            # plt.xlabel('x')
+            # plt.ylabel('y')
+            # plt.xlim((0, 1))
+            # plt.ylim((0, 1))
+            # plt.tight_layout()
+            # plt.savefig(f"Pressure_n{self.n}_Re{self.Re}.pdf")
+
             # Make a contour plot of the pressure field
-            plt.figure(figsize=(7, 5))
-            plt.contourf(self.Xp, self.Yp, self.p)
-            plt.colorbar(label='Pressure')
-            plt.title('Pressure Field')
+            plt.figure(figsize=(5, 4))  # Adjust width to accommodate the colorbar
+            plt.subplot(111)  # Subplot for the main plot
+
+            # Plot the pressure field
+            plt.pcolormesh(self.Xp, self.Yp, self.p)
+
+            # Add colorbar to the right of the plot
+            cbar = plt.colorbar(label='Pressure')
+            cbar.ax.set_ylabel('Pressure', rotation=270, labelpad=15)  # Rotate label for better fit
+
+            # Set title and axis labels
             plt.xlabel('x')
             plt.ylabel('y')
             plt.xlim((0, 1))
             plt.ylim((0, 1))
+
+            plt.tight_layout()
+
+            # Adjust the width of the colorbar to match the plot
+            plt.subplots_adjust(right=0.85)
+
+            plt.savefig(f"Pressure_n{self.n}_Re{self.Re}.pdf")
 
 
             plt.figure()
@@ -308,12 +335,8 @@ class CFDSim:
             plt.legend()
             plt.grid()
 
-            # np.savetxt("GlobalMassConservation.txt", np.array([np.arange(step), self.gmchist[:step]]).T)
-            # np.savetxt("ContinuityMassConservation.txt", np.array([np.arange(step), self.cmchist[:step]]).T)
-
-
-
-
+            np.savetxt("GlobalMassConservation.txt", np.array([np.arange(step), self.gmchist[:step]]).T)
+            np.savetxt("ContinuityMassConservation.txt", np.array([np.arange(step), self.cmchist[:step]]).T)
 
 
 class testCFDSim:
@@ -403,8 +426,6 @@ class testCFDSim:
         for i, n in enumerate(self.N):
             print(f"{n} {PError[i]} ")
 
-
-
 def Convergence(N):
     Y = np.array([[ 1.0000, -1.00000,  0.052971],
             [ 0.9688, -0.58031,  0.051493],
@@ -425,25 +446,78 @@ def Convergence(N):
         [ 0.9062,  0.33290,  0.084369],
         [ 0.9297,  0.29627,  0.087625],
         [ 1.0000,  0.00000,  0.090448]])
-    print("HELP!")
+
     Errors = np.zeros([4])
     sim = CFDSim(_n = N, _Re = 1000, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-6, maxstep=100000000)
     sim.NS2dMovingLidSquareCavityFlow(plot = False, LU_optimization=True)
-    Py = sim.p[int(N/2),:]
-    Px = sim.p[:,int(N/2)]
+    Py = sim.p[:,int(N/2)]
+    Px = sim.p[int(N/2), :]
     V = (sim.v[int(np.floor(N/2)),:] + sim.v[int(np.ceil(N/2)),:]) / 2
     U = (sim.u[:,int(np.floor(N/2))] + sim.u[:,int(np.ceil(N/2))]) / 2
     Py_values = interpolate.interp1d(sim.xc, Py, kind='cubic', fill_value='extrapolate')
     Px_values = interpolate.interp1d(sim.xc, Px, kind='cubic', fill_value='extrapolate')
-    V_values = interpolate.interp1d(sim.xb, V, kind='cubic')
-    U_values = interpolate.interp1d(sim.xb, U, kind='cubic')
+    V_values = interpolate.interp1d(sim.xb, V, kind='cubic', fill_value='extrapolate')
+    U_values = interpolate.interp1d(sim.xb, U, kind='cubic', fill_value='extrapolate')
 
     Errors[0] = np.max(np.abs(Py_values(Y[:,0]) - Y[:,2]))
-    Errors[1] = np.max(np.abs(Px_values(X[:,1]) - X[:,2]))
+    Errors[1] = np.max(np.abs(Px_values(X[:,0]) - X[:,2]))
     Errors[2] = np.max(np.abs(V_values(X[:,0]) - X[:,1]))
     Errors[3] = np.max(np.abs(U_values(Y[:,0]) - Y[:,1]))
     np.savetxt(f"Report2/Convergence_files/Errors_{N}.txt", Errors)
 
+    # Plot the benchmark values together with the computed values in four subplots
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    axs[0, 0].plot(Y[:,0], Y[:,2], 'o-', label='Benchmark')
+    axs[0, 0].plot(Y[:,0], Py_values(Y[:,0]), 'o-', label='Computed')
+    axs[0, 0].set_title('Pressure along y-axis')
+    axs[0, 0].set_xlabel('y')
+    axs[0, 0].set_ylabel('Pressure')
+    axs[0, 0].grid()
+    axs[0, 0].legend()
+
+    axs[0, 1].plot(X[:,0], X[:,2], 'o-', label='Benchmark')
+    axs[0, 1].plot(X[:,0], Px_values(X[:,0]), 'o-', label='Computed')
+    axs[0, 1].set_title('Pressure along x-axis')
+    axs[0, 1].set_xlabel('x')
+    axs[0, 1].set_ylabel('Pressure')
+    axs[0, 1].grid()
+    axs[0, 1].legend()
+
+    axs[1, 0].plot(X[:,0], X[:,1], 'o-', label='Benchmark')
+    axs[1, 0].plot(X[:,0], V_values(X[:,0]), 'o-', label='Computed')
+    axs[1, 0].set_title('Velocity along x-axis')
+    axs[1, 0].set_xlabel('x')
+    axs[1, 0].set_ylabel('Velocity')
+    axs[1, 0].grid()
+    axs[1, 0].legend()
+
+    axs[1, 1].plot(Y[:,0], Y[:,1], 'o-', label='Benchmark')
+    axs[1, 1].plot(Y[:,0], U_values(Y[:,0]), 'o-', label='Computed')
+    axs[1, 1].set_title('Velocity along y-axis')
+    axs[1, 1].set_xlabel('y')
+    axs[1, 1].set_ylabel('Velocity')
+    axs[1, 1].grid()
+    axs[1, 1].legend()
+    fig.tight_layout()
+    plt.savefig(f"Report2/Convergence_files/Convergence_{N}.pdf")
+
+    # print to latex
+    print('Y Pressure')
+    for i in range(len(Y)):
+        print(f"{Y[i,0]} {Y[i,2]} {Py_values(Y[i,0])}")
+    print('X Pressure')
+    for i in range(len(X)):
+        print(f"{X[i,0]} {X[i,2]} {Px_values(X[i,0])}")
+
+    print('X Velocity')
+    for i in range(len(X)):
+        print(f"{X[i,0]} {X[i,1]} {V_values(X[i,0])}")
+
+    print('Y Velocity')
+    for i in range(len(Y)):
+        print(f"{Y[i,0]} {Y[i,1]} {U_values(Y[i,0])}")
+
+    return Errors
 
 
 if __name__ == "__main__":
@@ -473,12 +547,11 @@ if __name__ == "__main__":
         test.NS2dValidatePoissonSolver(2*np.pi)
     
     if False: # Question 5
-        sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1)
+        sim = CFDSim(_n = 21, _Re = 1, dt=None, Ulid=-1)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
-        print("stop")
 
     if False: # Question 6
-        sim = CFDSim(_n = 21, _Re = 1, dt=0.01, Ulid=-1, div_correction=False)
+        sim = CFDSim(_n = 21, _Re = 1, dt=None, Ulid=-1, div_correction=True)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
     if False: # Question 7
@@ -515,39 +588,49 @@ if __name__ == "__main__":
         np.savetxt("NoLUOptimization.txt", np.array([n_arr, t_arr[:,1]]).T)
 
     if False: # Question 7B
-        n_arr = np.array([21, 51, 101])
+        # n_arr = np.array([21, 51, 101])
+        n_arr = np.logspace(1, 3, 10).astype(int)
         sims = np.zeros(len(n_arr), dtype=object)
         t_arr = np.zeros([len(n_arr), 2])
+        n_test = 100
 
         for i, n in enumerate(n_arr):
             sims[i] = CFDSim(_n = n, _Re = 1, dt=0.01, Ulid=-1, div_correction=True, steadytol=10e-6)
 
         for i in range(len(n_arr)):
+            print(f"LU: n: {n_arr[i]}")
             sim = sims[i]
             sim.NS2LaplaceMatrix()
             sim.LidDrivenCavity()
             sim.NS2dHfunctions()
-            
-            start = time.time()
-            sim.LU_PoisonSolver()
-            end = time.time()
-            
-            t_arr[i, 0] = end - start
+            LU_tests = np.zeros(n_test)
+            for j in range(n_test):
+                start = time.perf_counter()
+                sim.LU_PoisonSolver()
+                end = time.perf_counter()
+                LU_tests[j] = end - start
+            t_arr[i, 0] = np.median(LU_tests)
 
         for i in range(len(n_arr)):
+            print(f"No LU: n: {n_arr[i]}")
             sim = sims[i]
             sim.NS2LaplaceMatrix()
             sim.LidDrivenCavity()
             sim.NS2dHfunctions()
+            NoLU_tests = np.zeros(n_test)
             
-            start = time.time()
-            sim.PoisonSolver()
-            end = time.time()
-            
-            t_arr[i, 1] = end - start
+            for j in range(n_test):
+                start = time.perf_counter()
+                sim.PoisonSolver()
+                end = time.perf_counter()
+                NoLU_tests[j] = end - start
+            t_arr[i, 1] = np.median(NoLU_tests)
 
         slope_LU = np.polyfit(np.log(n_arr),np.log(t_arr[:,0]),1)[0]
         slope_noLU = np.polyfit(np.log(n_arr),np.log(t_arr[:,1]),1)[0]
+
+        np.savetxt(f"Report2/Timing_files/LUOptimization_slope{slope_LU}.txt", np.array([n_arr, t_arr[:,0]]).T)
+        np.savetxt(f"Report2/Timing_files/NoLUOptimization_slope{slope_noLU}.txt", np.array([n_arr, t_arr[:,1]]).T)
 
         plt.figure()
         plt.loglog(n_arr, t_arr[:,0], label=f"Slope LU: {slope_LU:.2f}", marker="o")
@@ -578,15 +661,25 @@ if __name__ == "__main__":
                 [ 0.9297,  0.29627,  0.087625],
                 [ 1.0000,  0.00000,  0.090448]])
 
-        Numbers = [11, 21, 41]
-        Errors = np.zeros([len(Numbers)+1, 4])
+        Numbers = [11, 17, 27, 35, 51, 75, 101, 131, 161, 201]
+        # Numbers = [51]
+        Errors = np.zeros((len(Numbers) + 1, 4))
 
-        pool = multiprocessing.Pool()
-        for n in Numbers:
-            pool.apply_async(Convergence, args=[n])
+        if False:
+            pool = multiprocessing.Pool(processes=min(len(Numbers),5))
+            # pool = multiprocessing.Pool()In 
+            for n in Numbers:
+                pool.apply_async(Convergence, args=[n])
 
-        pool.close()
-        pool.join()
+            pool.close()
+            pool.join()
+
+        elif True:
+            pass
+
+        else:
+            for i, n in enumerate(Numbers):
+                Convergence(n)
 
         for i, n in enumerate(Numbers):
             Errors[i] = np.loadtxt(f"Report2/Convergence_files/Errors_{n}.txt")
@@ -609,7 +702,6 @@ if __name__ == "__main__":
         plt.loglog(Numbers, Errors[:-1,2], label=f"Slope V: {slope_V:.2f}", marker="o")
         plt.loglog(Numbers, Errors[:-1,3], label=f"Slope U: {slope_U:.2f}", marker="o")
         plt.legend()
-
 
 
     if False: # Test
