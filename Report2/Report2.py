@@ -33,8 +33,6 @@ class CFDSim:
         self.LU = None
         self.s = None
 
-
-
     def get_dt(self, dt):
         dt_min = np.min([self.Re * self.dx**2 / 4, 1 / (self.Ulid**2 * self.Re)])/2
         if dt is None:
@@ -197,17 +195,14 @@ class CFDSim:
 
         s = (H1e - H1w) * self.dy + (H2n - H2s) * self.dx
 
-        # North
-        s[-1,:] = s[-1,:] - self.dy*self._a_n[-1,:]*self.H2[self.n-1,1:-1]
-
-        # South
-        s[0,:] = s[0,:] + self.dy*self._a_s[0,:]*self.H2[0,1:-1]
-        
-        # East
-        s[:,-1] = s[:,-1] + self.dx*self._a_e[:,-1]*self.H1[1:-1,self.n-1]
-
-        # West
-        s[:,0] = s[:,0] + self.dx*self._a_w[:,0]*self.H1[1:-1,0]
+        # # North
+        # s[-1,:] = s[-1,:] - self.dy*self._a_n[-1,:]*self.H2[self.n-1,1:-1]
+        # # South
+        # s[0,:] = s[0,:] + self.dy*self._a_s[0,:]*self.H2[0,1:-1]
+        # # East
+        # s[:,-1] = s[:,-1] - self.dx*self._a_e[:,-1]*self.H1[1:-1,self.n-1]
+        # # West
+        # s[:,0] = s[:,0] + self.dx*self._a_w[:,0]*self.H1[1:-1,0]
         self.s = s
         return self.s
 
@@ -216,7 +211,6 @@ class CFDSim:
         if self.A is None:
             self.NS2LaplaceMatrix()
         self.get_source(H1, H2)
-        # _p = sps.linalg.spsolve(self.A, self.s.flatten('F')).reshape(self.n, self.n)
         _p = sps.linalg.spsolve(self.A, self.s.flatten()).reshape(self.n, self.n)
         self.p = _p.copy() - _p[np.ceil(self.n/2-1).astype(int), np.ceil(self.n/2-1).astype(int)]
         # self.p = _p.copy() - np.mean(_p)
@@ -289,17 +283,6 @@ class CFDSim:
             plt.tight_layout()
             plt.savefig(f"Streamlines_n{self.n}_Re{self.Re}.pdf")
 
-            # # Make a contour plot of the pressure field
-            # plt.figure(figsize=(4, 4))
-            # plt.pcolormesh(self.Xp, self.Yp, self.p)
-            # plt.colorbar(label='Pressure')
-            # plt.title('Pressure Field')
-            # plt.xlabel('x')
-            # plt.ylabel('y')
-            # plt.xlim((0, 1))
-            # plt.ylim((0, 1))
-            # plt.tight_layout()
-            # plt.savefig(f"Pressure_n{self.n}_Re{self.Re}.pdf")
 
             # Make a contour plot of the pressure field
             plt.figure(figsize=(5, 4))  # Adjust width to accommodate the colorbar
@@ -640,27 +623,6 @@ if __name__ == "__main__":
 
     if True: # Question 8
 
-        
-        Y = np.array([[ 1.0000, -1.00000,  0.052971],
-                 [ 0.9688, -0.58031,  0.051493],
-                 [ 0.9531, -0.47239,  0.050314],
-                 [ 0.7344, -0.18861,  0.012113],
-                 [ 0.5000,  0.06205,  0.000000],
-                 [ 0.2813,  0.28040,  0.040381],
-                 [ 0.1016,  0.30029,  0.104416],
-                 [ 0.0625,  0.20227,  0.109160],
-                 [ 0.0000,  0.00000,  0.110560]])
-        
-        X = np.array([[ 0.0000,  0.00000,  0.077429],
-                [ 0.0391, -0.29330,  0.078658],
-                [ 0.0547, -0.41018,  0.077128],
-                [ 0.1406, -0.42634,  0.049004],
-                [ 0.5000,  0.02580,  0.000000],
-                [ 0.7734,  0.33398,  0.047259],
-                [ 0.9062,  0.33290,  0.084369],
-                [ 0.9297,  0.29627,  0.087625],
-                [ 1.0000,  0.00000,  0.090448]])
-
         Numbers = [11, 17, 27, 35, 51, 75, 101, 131, 161, 201]
         # Numbers = [51]
         Errors = np.zeros((len(Numbers) + 1, 4))
@@ -702,12 +664,6 @@ if __name__ == "__main__":
         plt.loglog(Numbers, Errors[:-1,2], label=f"Slope V: {slope_V:.2f}", marker="o")
         plt.loglog(Numbers, Errors[:-1,3], label=f"Slope U: {slope_U:.2f}", marker="o")
         plt.legend()
-
-
-    if False: # Test
-        number = 3
-        Array = np.array([[1,2,3], [4,5,6], [7,8,9]])
-        print(Array[:,int(number/2)])
 
 
     plt.show()
