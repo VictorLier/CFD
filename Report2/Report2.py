@@ -533,7 +533,7 @@ if __name__ == "__main__":
         sim = CFDSim(_n = 21, _Re = 1, dt=None, Ulid=-1)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
-    if False: # Question 6
+    if True: # Question 6
         sim = CFDSim(_n = 21, _Re = 1, dt=None, Ulid=-1, div_correction=True)
         sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
@@ -621,7 +621,9 @@ if __name__ == "__main__":
         plt.legend()
         plt.grid()
 
-    if True: # Question 8
+    if False: # Question 8
+        sim = CFDSim(_n = 21, _Re = 1000, dt=None, Ulid=-1, div_correction=True)
+        sim.NS2dMovingLidSquareCavityFlow(plot = True)
 
         Numbers = [11, 17, 27, 35, 51, 75, 101, 131, 161, 201]
         # Numbers = [51]

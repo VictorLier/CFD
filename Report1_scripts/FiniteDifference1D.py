@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 from typing import List
 import scipy.sparse as sps
+import sympy as sp
 
 def fdcoeff_1d_uniform(a: int, b: int):
     """
@@ -42,7 +43,6 @@ def diffmatrix_1d_uniform(der, N, dx, a: int, b: int):
         D[i, x] = A[der, :] / dx**der
     return D
 
-
 def fdcoeff_1d_general(x: List[float], x0: float):
     """
     Computes coefficients of one-dimensional finite difference schemes on an even stencil.
@@ -66,6 +66,15 @@ def fdcoeff_1d_general(x: List[float], x0: float):
 
     return A
     
+def get_stencil_1d(x: List[float], x0: float, der: int):
+    c = fdcoeff_1d_general(x, x0)
+    cder = c[der, :]
+    print("Coefficients for derivative", der)
+    print([sp.nsimplify(n) for n in cder])
+    print("The approximation is given by:")
+    print(f"f_i^{der} = 1/dx^{der} * ({' + '.join([f'{sp.nsimplify(cder[i])}*f_i+{xi+0.5}' for i, xi in enumerate(x)])})")
+    return cder
+
 
 def eval_fdcoeff_1d_general(fun: callable, x: List[float], a: int, b: int):
     """
@@ -116,6 +125,12 @@ def diffmatrix_1d_general(der,x,a,b):
 
 
 if __name__ == "__main__":
+    x = [-1.5, -0.5, 0.5, 1.5]
+    x0 = 0
+    c = fdcoeff_1d_general(x, x0)
+    fx = get_stencil_1d(x, x0, 2)
+    test = sp.nsimplify(0.2)
+    
     # raise Exception("This file is not meant to be executed on its own.")
     D_uniform = diffmatrix_1d_uniform(1, 5, 1, 1, 1)
     x = np.arange(0, 5)
