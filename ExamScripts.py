@@ -8,6 +8,7 @@ import numpy as np
 from typing import List
 import numpy as np
 from scipy.linalg import toeplitz
+import numpy as np
 
 
 def fdcoeff_1d_general(x: List[float], x0: float):
@@ -33,7 +34,7 @@ def fdcoeff_1d_general(x: List[float], x0: float):
 
     return A
 
-def FDmatrix(x: List[float], x0: float, extras: int = 2):
+def FDmatrix(x: List[float], x0: float, extras: int = 2, _print = False):
     """
     Computes coefficients of one-dimensional finite difference schemes on an even stencil.
     """
@@ -52,6 +53,16 @@ def FDmatrix(x: List[float], x0: float, extras: int = 2):
         for j in range(r + extras):
             M2[i, j] = (x[i] - x0)**j / math.factorial(j)
 
+    if _print:
+        # Show the matrix M using sp.nsimplify
+        print("Matrix M:")
+        print([[sp.nsimplify(n) for n in m] for m in M])
+        M_inv = np.linalg.inv(M)
+        print("Matrix M_inv:")
+        print([[sp.nsimplify(n) for n in m] for m in M_inv])
+        print("Matrix M2:")
+        print([[sp.nsimplify(n) for n in m] for m in M2])
+
     return M, M2
     
 def get_stencil_1d(x: List[float], x0: float, der: int):
@@ -59,8 +70,11 @@ def get_stencil_1d(x: List[float], x0: float, der: int):
     cder = c[der, :]
     print("Coefficients for derivative", der)
     print([sp.nsimplify(n) for n in cder])
-    print("The approximation is given by:")
+    print("The approximation for the eastern boundary is given by:")
     print(f"f^{der} = 1/dx^{der} * ({' + '.join([f'{sp.nsimplify(cder[i])}*f_(i+{xi+0.5})' for i, xi in enumerate(x)])})")
+    if True:
+        print("The approximation for the western boundary is given by:")
+        print(f"f^{der} = 1/dx^{der} * ({' + '.join([f'{sp.nsimplify(cder[i])}*f_(i+{xi-0.5})' for i, xi in enumerate(x)])})")
     return cder
 
 def get_leading_truncation_error_1d(x: List[float], x0: float, der: int):
@@ -122,7 +136,6 @@ def get_J_backup(x: List[float], x0: float, der: int):
 
 def get_stability_from_matrix(x, x0, der, N, dt, periodic = True, plot = True):
     J = np.zeros((N, N))
-    c = get_east_minus_west_1d(x, x0, der, _print=False)
     dx = 1 / N
 
     _x = np.array([x[0]-1] + x)+0.5
@@ -132,6 +145,7 @@ def get_stability_from_matrix(x, x0, der, N, dt, periodic = True, plot = True):
 
     #################### CHANGE THIS ACCORDING TO PROBLEM #####################
     # Modify the c vector to the correct values e.g. a-variables can be imposed
+    c = get_east_minus_west_1d(x, x0, der, _print=False)
     c = c.copy()*(-1/dx)
     ###########################################################################
     if periodic:
@@ -192,8 +206,8 @@ def get_stability_from_matrix(x, x0, der, N, dt, periodic = True, plot = True):
         plt.title(f"Eigenvalues of Jacobian for Cr = {Cr}")
         plt.axvline(x=0, color='r', linestyle='--', label="Midtpoint rule limit")
         plt.scatter(eig.real, eig.imag, label="Eigenvalues")
-        plt.xlabel(r"Re $\lambda \Delta t$")
-        plt.ylabel(r"Im $\lambda \Delta t$")
+        plt.xlabel("Re ($\lambda \Delta t$)")
+        plt.ylabel("Im $\lambda \Delta t$")
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
         plt.grid()
@@ -201,29 +215,51 @@ def get_stability_from_matrix(x, x0, der, N, dt, periodic = True, plot = True):
 
     return J
 
+def get_eigenvalues_plot():
+    n = np.linspace(2, 100, 1000)
+    th = 2 * np.pi / n
+
+    #################### CHANGE THIS ACCORDING TO PROBLEM #####################
+    alpha = 1/2
+    lam = 2 * alpha * (np.cos(th) - 1)
+    _label = f'$ α ={alpha}$ '
+    ###########################################################################
+
+    plt.figure()
+    # Use emtpy circles
+    plt.plot(np.real(lam), np.imag(lam), 'o-', fillstyle='none', label = _label)
+    plt.axvline(x=0, color='r', linestyle='--', label="Midtpoint rule limit")
+    plt.grid(True)
+    plt.axis('equal')
+    plt.xlabel('Re($\lambda \Delta t$)')
+    plt.ylabel('Im($\lambda \Delta t$)')
+    plt.legend() 
+
 if __name__ == "__main__":
-    ders = [0]
-    x = [-1.5, -0.5, 0.5]
-    # x = [-1.5, -0.5, 0.5, 1.5]
+    ders = [0, 2]
+    # x = [-1.5, -0.5, 0.5]
+    x = [-1.5, -0.5, 0.5, 1.5]
     x0 = 0
-    periodic = False
+    periodic = True
+    # M, M2 = FDmatrix(x, x0, _print=True)
+
     for der in ders:
         print("\n")
-        M, M2 = FDmatrix(x, x0)
         print("-------------- Stencil for derivative", der, " --------------")
         get_stencil_1d(x, x0, der)
         print("------ Leading truncation error for derivative", der, "------")
         get_leading_truncation_error_1d(x, x0, der)
         print("----- East minus West difference for derivative", der, "-----")
         get_east_minus_west_1d(x, x0, der)
-        if True:
+        if False:
             print("---------------- Stability analysis", der, " ----------------")
-            N = 10
+            N = 8
             Cr = 0.5
             dt = Cr * 1 / N
             get_stability_from_matrix(x, x0, der, N, dt, periodic)
         print("\n")
     
+    # get_eigenvalues_plot()
     stop = True
     plt.show()    
     
