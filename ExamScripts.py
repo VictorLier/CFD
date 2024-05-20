@@ -1,3 +1,5 @@
+# The main functions in this scripts were developed in the context of the reports/projects.
+# Therefore, Victor Lier Hansen (s204389) might use equavalent functions in the exam.
 import numpy as np
 import math
 import matplotlib.pyplot as plt
@@ -39,10 +41,10 @@ def FDmatrix(x: List[float], x0: float, extras: int = 2, _print = False):
     Computes coefficients of one-dimensional finite difference schemes on an even stencil.
     """
     r = len(x)
-    dx0 = np.min(np.diff(x))
-    #dx0 = 1
-    x = x / dx0
-    x0 = x0 / dx0
+    # dx0 = np.min(np.diff(x))
+    # dx0 = 1
+    # x = x / dx0
+    # x0 = x0 / dx0
     M = np.zeros((r, r))
     M2 = np.zeros((r, r + extras))
     for i in range(r):
@@ -68,6 +70,7 @@ def FDmatrix(x: List[float], x0: float, extras: int = 2, _print = False):
 def get_stencil_1d(x: List[float], x0: float, der: int):
     c = fdcoeff_1d_general(x, x0)
     cder = c[der, :]
+    cder = [0 if np.abs(_cder) <= 1e-10 else _cder for _cder in cder]
     print("Coefficients for derivative", der)
     print([sp.nsimplify(n) for n in cder])
     print("The approximation for the eastern boundary is given by:")
@@ -91,9 +94,13 @@ def get_leading_truncation_error_1d(x: List[float], x0: float, der: int):
     
     e = fE - fFD
 
+    e = [0 if np.abs(_e) <= 1e-10 else _e for _e in e]
     e_index = np.nonzero(e)[0]
-    # Get the leading term
+
     e_index = e_index[0]
+
+    # Get the leading term
+    # e_index = e_index[0]
     print("The error vector is:")
     print([sp.nsimplify(n) for n in e])
     print("The leading truncation error term for derivative", der, "is:")
@@ -108,6 +115,7 @@ def get_east_minus_west_1d(x: List[float], x0: float, der: int, _print = True):
     x_ew = x.copy()
     x_ew.append(x[-1] + 1)
     fdew = np.array(fde) - np.array(fdw)
+    fdew = [0 if np.abs(_fdew) <= 1e-10 else _fdew for _fdew in fdew]
     if _print:
         print("The east minus west difference for derivative", der, "is:")
         print([sp.nsimplify(n) for n in fdew])
@@ -177,9 +185,9 @@ def get_stability_from_matrix(x, x0, der, N, dt, periodic = True, plot = True):
     eig = np.linalg.eigvals(J) * dt
     # Check for stability
     if 1 + np.max(np.abs(eig)) > 1:
-        print(f"Unstable for Cr = {Cr}")
+        print(f"Unstable")
     else:
-        print(f"Stable for Cr = {Cr}")
+        print(f"Stable")
 
     if plot:
         # Show position of values using spy
@@ -236,9 +244,10 @@ def get_eigenvalues_plot():
     plt.legend() 
 
 if __name__ == "__main__":
-    ders = [0, 2]
+    ders = [1]
     # x = [-1.5, -0.5, 0.5]
-    x = [-1.5, -0.5, 0.5, 1.5]
+    # x = [-1.5, -0.5, 0.5, 1.5] # Exam 1
+    x = [0, 1, 2]
     x0 = 0
     periodic = True
     # M, M2 = FDmatrix(x, x0, _print=True)
