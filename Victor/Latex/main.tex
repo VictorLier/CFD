@@ -1,0 +1,86 @@
+\title{41317 - CFD\\Summer exam 2024}    % Insert title
+\author{
+    Victor Lier\\s204389    % insert author - use \and for more than one
+    %\and
+}
+
+\newcommand{\Gruppe}{Group 2}   % Group number
+
+\documentclass[12pt]{article}
+\usepackage[hidelinks, pdfusetitle, pdfsubject={Computational Fluid Dynamics}, pdfkeywords={CFD, Exam}]{hyperref} %Subject and keywords
+
+\date{\today}
+\usepackage[T1]{fontenc}    % 8 bit characters
+\usepackage[tmargin=1.25in, bmargin=1in, head=15pt]{geometry}   % Bigger top and bottom margins
+\usepackage{graphicx}   % To show images
+\usepackage{microtype}  % Small changes to text - Looks nice
+\usepackage{booktabs}   % Nice tables
+\usepackage{fancyhdr}   % Header package
+\usepackage{subcaption} % Multifigures
+\usepackage{chngpage}   % Adjustwidth
+\usepackage{amsmath}    % Math
+
+\usepackage{biblatex}   % Refrences
+\addbibresource{References.bib}
+
+\usepackage[separate-uncertainty = true,multi-part-units=single]{siunitx}   % Si units
+\sisetup{range-phrase= - }
+\sisetup{range-units=single}
+
+\usepackage{listings}   % Showing code
+\lstset{
+  basicstyle=\ttfamily,
+  columns=fullflexible,
+  frame=single,
+  breaklines=true,
+  postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+}
+
+\usepackage{tikz}   % 2D graphics
+\usetikzlibrary{arrows,calc,decorations.markings}
+\tikzset{every picture/.style={line width=0.8}}
+\tikzstyle{force}   = [very thick,-latex, ->]
+\tikzstyle{dim}     = [thick, -latex, |<->|]
+
+\usepackage{pgfplots}   % Plots
+\pgfplotsset{compat=1.6}
+\pgfplotsset{
+    legend image with text/.style={
+        legend image code/.code={%
+            \node[anchor=center] at (0.3cm,0cm) {#1};
+        }
+    },
+}
+
+\pagenumbering{Roman}
+
+\listfiles
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\nouppercase{\leftmark}}
+\fancyhead[R]{\nouppercase{\thepage}}
+
+\begin{document}
+
+\newgeometry{bottom=2cm, top=1cm, head=0pt}
+\begin{titlepage}
+\include{0/Titlepage}
+\end{titlepage}
+
+\restoregeometry
+
+%\tableofcontents
+%\clearpage
+
+\pagenumbering{arabic}
+
+\include{Text}
+
+\clearpage
+\printbibliography[heading=bibintoc]
+
+\include{Appendices}
+
+\end{document}
